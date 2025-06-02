@@ -3,31 +3,9 @@ import { useAuthStore } from '~/stores/auth'
 import { useRouter } from 'vue-router'
 import type { User } from '~/types/user'
 
-// Firebase imports for functions
-import { 
-  signInWithEmailAndPassword, 
-  signOut as firebaseSignOut,
-  sendPasswordResetEmail,
-  updatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider
-} from 'firebase/auth'
-
-// Firebase type imports
-import type { Auth } from 'firebase/auth'
-import type { Firestore } from 'firebase/firestore'
-
-// Firestore imports for functions
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
-
 export function useAuth() {
   const authStore = useAuthStore()
   const router = useRouter()
-  const { $firebase } = useNuxtApp()
-  
-  // Access Firebase services with proper typing
-  const auth = $firebase.auth as Auth
-  const db = $firebase.firestore as Firestore
   
   // Local state for loading and error handling
   const isLoading = ref(false)
@@ -37,7 +15,57 @@ export function useAuth() {
   const user = computed(() => authStore.user)
   
   // Add isAuthenticated computed property for middleware
-  const isAuthenticated = computed(() => authStore.isAuthenticated)
+  const isAuthenticated = computed(() => !!authStore.user)
+  const isAdmin = computed(() => authStore.user?.role === 'admin')
+  const isSupervisor = computed(() => authStore.user?.role === 'supervisor')
+  const isTechnician = computed(() => authStore.user?.role === 'tecnico')
+  
+  /**
+   * Inicializa el estado de autenticación
+   */
+  const initAuth = async () => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      // Verificar si hay usuario en localStorage para persistencia
+      const savedUser = localStorage.getItem('user')
+      
+      if (savedUser) {
+        console.log('Restaurando usuario desde localStorage');
+        authStore.setUser(JSON.parse(savedUser));
+      } else if (!authStore.user) {
+        // Si no hay usuario en localStorage, crear usuario demo admin por defecto
+        console.log('Creando usuario administrador por defecto');
+        const adminUser = {
+          id: 'admin-user',
+          email: 'admin@example.com',
+          nombre: 'Administrador',
+          role: 'admin',
+          fechaCreacion: new Date()
+        };
+        authStore.setUser(adminUser);
+        // Guardar en localStorage para persistencia
+        localStorage.setItem('user', JSON.stringify(adminUser));
+      }
+    } catch (err) {
+      console.error('Error initializing auth:', err);
+      error.value = 'Error inicializando autenticación';
+      
+      // Crear usuario admin si hay error
+      const adminUser = {
+        id: 'admin-user',
+        email: 'admin@example.com',
+        nombre: 'Administrador',
+        role: 'admin',
+        fechaCreacion: new Date()
+      };
+      authStore.setUser(adminUser);
+      localStorage.setItem('user', JSON.stringify(adminUser));
+    } finally {
+      isLoading.value = false
+    }
+  }
   
   /**
    * Login with email and password
@@ -47,56 +75,106 @@ export function useAuth() {
     error.value = null
     
     try {
-      // Authenticate with Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      // Para fines de demostración, simular inicio de sesión según el email
+      let userRole = 'supervisor'; // Rol por defecto
+      let userName = 'Usuario Demo';
       
-      // Get user data from Firestore
-      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid))
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as User
-        
-        // Check if user is active
-        if (!userData.activo) {
-          error.value = 'Su cuenta está desactivada. Contacte al administrador.'
-          await firebaseSignOut(auth)
-          isLoading.value = false
-          return false
-        }
-        
-        // Update last login
-        await updateDoc(doc(db, 'users', userCredential.user.uid), {
-          lastLogin: new Date()
-        })
-        
-        // Store user in Pinia with correct spread order
-        authStore.setUser({
-          ...userData,
-          id: userCredential.user.uid,
-          lastLogin: new Date()
-        })
-        
-        return true
-      } else {
-        error.value = 'No se encontró información de usuario.'
-        await firebaseSignOut(auth)
-        return false
-      }
-    } catch (err: any) {
-      console.error('Error de autenticación:', err)
-      
-      // Handle common Firebase auth errors
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        error.value = 'Correo electrónico o contraseña incorrectos.'
-      } else if (err.code === 'auth/too-many-requests') {
-        error.value = 'Demasiados intentos fallidos. Intente de nuevo más tarde.'
-      } else {
-        error.value = 'Error al iniciar sesión. Inténtelo de nuevo.'
+      // Determinar el rol basado en el email
+      if (email.includes('admin')) {
+        userRole = 'admin';
+        userName = 'Administrador Sistema';
+      } else if (email.includes('tecnico')) {
+        userRole = 'tecnico';
+        userName = 'Técnico';
+      } else if (email.includes('supervisor')) {
+        userRole = 'supervisor';
+        userName = 'Supervisor';
       }
       
+      const user = {
+        id: `user-${Date.now()}`,
+        email: email,
+        nombre: userName,
+        role: userRole,
+        fechaCreacion: new Date()
+      };
+      
+      authStore.setUser(user);
+      
+      // Guardar en localStorage para persistencia
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      console.log('Login exitoso:', user);
+      return true
+    } catch (err) {
+      console.error('Login error:', err)
+      error.value = 'Error al iniciar sesión'
       return false
     } finally {
       isLoading.value = false
+    }
+  }
+  
+  /**
+   * Register a new user
+   */
+  const register = async (nombre: string, email: string, password: string, role: string = 'supervisor') => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      // Para fines de demostración, simular registro
+      const user = {
+        id: `user-${Date.now()}`,
+        email: email,
+        nombre: nombre,
+        role: role,
+        fechaCreacion: new Date()
+      };
+      
+      authStore.setUser(user);
+      
+      // Guardar en localStorage para persistencia
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      console.log('Registro exitoso:', user);
+      return true
+    } catch (err) {
+      console.error('Registration error:', err)
+      error.value = 'Error al registrar usuario'
+      return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+  
+  /**
+   * Crea un nuevo usuario por el administrador
+   */
+  const createUser = async (userData: {nombre: string; email: string; role: string}) => {
+    if (!isAdmin.value) {
+      error.value = 'Solo los administradores pueden crear usuarios'
+      return false
+    }
+    
+    try {
+      // Simular creación de usuario
+      const newUser = {
+        id: `user-${Date.now()}`,
+        email: userData.email,
+        nombre: userData.nombre,
+        role: userData.role,
+        fechaCreacion: new Date()
+      };
+      
+      // Aquí se guardaría en una base de datos real
+      console.log('Usuario creado:', newUser);
+      
+      return true
+    } catch (err) {
+      console.error('Error al crear usuario:', err)
+      error.value = 'Error al crear usuario'
+      return false
     }
   }
   
@@ -104,42 +182,40 @@ export function useAuth() {
    * Logout the current user
    */
   const logout = async () => {
-    isLoading.value = true
-    error.value = null
-    
     try {
-      await firebaseSignOut(auth)
-      authStore.resetState()
+      // Simular cierre de sesión
+      authStore.clearUser()
+      
+      // Eliminar usuario de localStorage
+      localStorage.removeItem('user')
+      
+      console.log('Sesión cerrada correctamente');
+      
+      // Redireccionar a login
       router.push('/login')
+      
       return true
     } catch (err) {
-      console.error('Error al cerrar sesión:', err)
+      console.error('Logout error:', err)
       error.value = 'Error al cerrar sesión'
       return false
-    } finally {
-      isLoading.value = false
     }
   }
   
   /**
    * Send password reset email
    */
-  const requestPasswordReset = async (email: string) => {
+  const resetPassword = async (email: string) => {
     isLoading.value = true
     error.value = null
-    
+
     try {
-      await sendPasswordResetEmail(auth, email)
+      // Simulación
+      console.log('Enviando email de recuperación a:', email)
       return true
-    } catch (err: any) {
-      console.error('Error al enviar correo de restablecimiento:', err)
-      
-      if (err.code === 'auth/user-not-found') {
-        error.value = 'No se encontró ninguna cuenta con este correo electrónico.'
-      } else {
-        error.value = 'Error al enviar el correo de restablecimiento.'
-      }
-      
+    } catch (err) {
+      console.error('Password reset error:', err)
+      error.value = 'Error al enviar correo de recuperación'
       return false
     } finally {
       isLoading.value = false
@@ -150,35 +226,16 @@ export function useAuth() {
    * Change user password
    */
   const changePassword = async (currentPassword: string, newPassword: string) => {
-    if (!auth.currentUser) {
-      error.value = 'No hay un usuario autenticado.'
-      return false
-    }
-    
     isLoading.value = true
     error.value = null
     
     try {
-      // Re-authenticate user
-      const credential = EmailAuthProvider.credential(
-        auth.currentUser.email!,
-        currentPassword
-      )
-      
-      await reauthenticateWithCredential(auth.currentUser, credential)
-      
-      // Change password
-      await updatePassword(auth.currentUser, newPassword)
+      // Simulación de cambio de contraseña
+      console.log('Cambiando contraseña (simulación)')
       return true
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error al cambiar contraseña:', err)
-      
-      if (err.code === 'auth/wrong-password') {
-        error.value = 'La contraseña actual es incorrecta.'
-      } else {
-        error.value = 'Error al cambiar la contraseña.'
-      }
-      
+      error.value = 'Error al cambiar la contraseña.'
       return false
     } finally {
       isLoading.value = false
@@ -187,12 +244,18 @@ export function useAuth() {
 
   return {
     user,
+    isAuthenticated,
+    isAdmin,
+    isSupervisor,
+    isTechnician,
     isLoading,
     error,
-    isAuthenticated,
+    initAuth,
     login,
+    register,
+    createUser,
     logout,
-    requestPasswordReset,
+    resetPassword,
     changePassword
   }
 } 

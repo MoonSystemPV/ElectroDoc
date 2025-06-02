@@ -1,31 +1,7 @@
-import {
-  collection,
-  doc,
-  addDoc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-  Timestamp
-} from 'firebase/firestore'
-import type { Firestore } from 'firebase/firestore'
-import {
-  ref as storageRef,
-  uploadBytesResumable,
-  getDownloadURL,
-  deleteObject
-} from 'firebase/storage'
-import type { FirebaseStorage } from 'firebase/storage'
 import { format } from 'date-fns'
 import { ref, computed } from 'vue'
 import { useDocumentStore } from '~/stores/documents'
 import { useAuthStore } from '~/stores/auth'
-import { useNuxtApp } from '#app'
 
 export type DocumentType = 'TE1' | 'TE2' | 'plano' | 'informe' | 'foto' | 'certificado'
 export type DocumentStatus = 'pendiente' | 'validado' | 'rechazado'
@@ -51,11 +27,6 @@ export interface Document {
 export function useDocuments() {
   const documentStore = useDocumentStore()
   const authStore = useAuthStore()
-  const { $firebase } = useNuxtApp()
-  
-  // Access Firebase services with proper typing
-  const db = $firebase.firestore as Firestore
-  const storage = $firebase.storage as FirebaseStorage
   
   // Local state for loading and error handling
   const isLoading = ref(false)
@@ -72,81 +43,239 @@ export function useDocuments() {
     error.value = null
     
     try {
-      // Query documents for the project
-      const q = query(
-        collection(db, 'documentos'),
-        where('proyectoId', '==', projectId)
-      )
-      
-      const querySnapshot = await getDocs(q)
-      const documentsData = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          projectId: data.proyectoId, // Map proyectoId to projectId for API consistency
-          fechaSubida: data.fechaSubida?.toDate() || new Date(),
-          fechaValidacion: data.fechaValidacion?.toDate(),
-          tipo: data.tipo as DocumentType,
-          estado: data.estado as DocumentStatus,
-          version: data.version || 1
-        } as Document;
-      });
-      
-      // Update store
-      documentStore.setDocuments(documentsData);
-      documentStore.setCurrentProjectDocuments(projectId);
-      
-      return documentsData;
+      console.log('Cargando documentos de demostración para:', projectId);
+      // Cargar documentos de demostración
+      await loadDemoDocuments(projectId);
+      return documentStore.currentProjectDocuments;
     } catch (err) {
       console.error('Error fetching project documents:', err)
       error.value = 'Error al cargar los documentos del proyecto'
-      return []
+      
+      // Si hay error, cargar documentos de demostración
+      await loadDemoDocuments(projectId);
+      return documentStore.currentProjectDocuments;
     } finally {
       isLoading.value = false
     }
   }
   
   /**
-   * Get a single document by ID
+   * Carga documentos de demostración cuando no se pueden obtener de Firestore
+   */
+  const loadDemoDocuments = async (projectId: string) => {
+    console.log('Cargando documentos de demostración para proyecto:', projectId);
+    
+    const now = new Date();
+    const lastMonth = new Date(now);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    
+    const lastWeek = new Date(now);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    
+    const demoDocuments: Document[] = [
+      // Documentos para proyecto 1
+      ...(projectId === 'proj-1' ? [
+        {
+          id: 'doc-1-1',
+          projectId: 'proj-1',
+          proyectoId: 'proj-1',
+          tipo: 'TE1',
+          nombre: 'TE1 - Declaración instalación eléctrica',
+          url: 'https://via.placeholder.com/600x800?text=TE1+Documento',
+          estado: 'validado',
+          version: 1,
+          uploadedBy: authStore.user?.id || 'user-1',
+          validatedBy: 'supervisor-1',
+          validadoPor: 'supervisor-1',
+          fechaSubida: lastMonth,
+          fechaValidacion: lastWeek,
+          comentarios: 'Documento completo y correcto',
+          storagePath: '/demo/document1.pdf'
+        },
+        {
+          id: 'doc-1-2',
+          projectId: 'proj-1',
+          proyectoId: 'proj-1',
+          tipo: 'plano',
+          nombre: 'Plano eléctrico - Planta baja',
+          url: 'https://via.placeholder.com/1200x800?text=Plano+Electrico',
+          estado: 'pendiente',
+          version: 1,
+          uploadedBy: authStore.user?.id || 'user-1',
+          fechaSubida: now,
+          storagePath: '/demo/plano1.pdf'
+        },
+        {
+          id: 'doc-1-3',
+          projectId: 'proj-1',
+          proyectoId: 'proj-1',
+          tipo: 'foto',
+          nombre: 'Foto instalación transformador',
+          url: 'https://via.placeholder.com/800x600?text=Foto+Transformador',
+          estado: 'pendiente',
+          version: 1,
+          uploadedBy: authStore.user?.id || 'user-1',
+          fechaSubida: now,
+          storagePath: '/demo/foto1.jpg'
+        }
+      ] : []),
+      
+      // Documentos para proyecto 2
+      ...(projectId === 'proj-2' ? [
+        {
+          id: 'doc-2-1',
+          projectId: 'proj-2',
+          proyectoId: 'proj-2',
+          tipo: 'informe',
+          nombre: 'Informe mantenimiento línea 220kV',
+          url: 'https://via.placeholder.com/600x800?text=Informe+Mantenimiento',
+          estado: 'validado',
+          version: 2,
+          uploadedBy: authStore.user?.id || 'user-1',
+          validatedBy: 'supervisor-1',
+          validadoPor: 'supervisor-1',
+          fechaSubida: lastMonth,
+          fechaValidacion: lastWeek,
+          comentarios: 'Documento revisado y aprobado',
+          storagePath: '/demo/informe1.pdf'
+        },
+        {
+          id: 'doc-2-2',
+          projectId: 'proj-2',
+          proyectoId: 'proj-2',
+          tipo: 'foto',
+          nombre: 'Fotos inspección torre 15',
+          url: 'https://via.placeholder.com/800x600?text=Fotos+Torre',
+          estado: 'rechazado',
+          version: 1,
+          uploadedBy: authStore.user?.id || 'user-1',
+          validatedBy: 'supervisor-1',
+          validadoPor: 'supervisor-1',
+          fechaSubida: lastMonth,
+          fechaValidacion: lastWeek,
+          comentarios: 'Fotos con baja resolución, favor volver a tomar',
+          storagePath: '/demo/fotos2.zip'
+        }
+      ] : []),
+      
+      // Documentos para proyecto 3
+      ...(projectId === 'proj-3' ? [
+        {
+          id: 'doc-3-1',
+          projectId: 'proj-3',
+          proyectoId: 'proj-3',
+          tipo: 'TE2',
+          nombre: 'TE2 - Declaración instalación solar',
+          url: 'https://via.placeholder.com/600x800?text=TE2+Solar',
+          estado: 'validado',
+          version: 1,
+          uploadedBy: authStore.user?.id || 'user-1',
+          validatedBy: 'supervisor-1',
+          validadoPor: 'supervisor-1',
+          fechaSubida: lastMonth,
+          fechaValidacion: lastWeek,
+          comentarios: 'Aprobado',
+          storagePath: '/demo/te2-solar.pdf'
+        },
+        {
+          id: 'doc-3-2',
+          projectId: 'proj-3',
+          proyectoId: 'proj-3',
+          tipo: 'plano',
+          nombre: 'Plano distribución paneles',
+          url: 'https://via.placeholder.com/1200x800?text=Plano+Paneles',
+          estado: 'validado',
+          version: 3,
+          uploadedBy: authStore.user?.id || 'user-1',
+          validatedBy: 'supervisor-1',
+          validadoPor: 'supervisor-1',
+          fechaSubida: lastMonth,
+          fechaValidacion: lastWeek,
+          comentarios: 'Aprobado después de correcciones',
+          storagePath: '/demo/plano-paneles.pdf'
+        },
+        {
+          id: 'doc-3-3',
+          projectId: 'proj-3',
+          proyectoId: 'proj-3',
+          tipo: 'certificado',
+          nombre: 'Certificado SEC paneles solares',
+          url: 'https://via.placeholder.com/600x800?text=Certificado+SEC',
+          estado: 'validado',
+          version: 1,
+          uploadedBy: authStore.user?.id || 'user-1',
+          validatedBy: 'supervisor-1',
+          validadoPor: 'supervisor-1',
+          fechaSubida: lastMonth,
+          fechaValidacion: lastWeek,
+          comentarios: 'Certificado verificado',
+          storagePath: '/demo/certificado-sec.pdf'
+        }
+      ] : []),
+      
+      // Documentos para proyecto 4
+      ...(projectId === 'proj-4' ? [
+        {
+          id: 'doc-4-1',
+          projectId: 'proj-4',
+          proyectoId: 'proj-4',
+          tipo: 'plano',
+          nombre: 'Plano modernización planta',
+          url: 'https://via.placeholder.com/1200x800?text=Plano+Modernizacion',
+          estado: 'pendiente',
+          version: 1,
+          uploadedBy: authStore.user?.id || 'user-1',
+          fechaSubida: lastMonth,
+          storagePath: '/demo/plano-modernizacion.pdf'
+        }
+      ] : [])
+    ];
+    
+    // Actualizar store con documentos demo
+    documentStore.setDocuments(demoDocuments);
+    documentStore.setCurrentProjectDocuments(projectId);
+    
+    return demoDocuments;
+  }
+  
+  /**
+   * Get a document by ID
    */
   const getDocument = async (documentId: string) => {
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      const docRef = doc(db, 'documentos', documentId)
-      const docSnap = await getDoc(docRef)
+      // Buscar en los documentos cargados actualmente
+      let document = documentStore.documents.find(d => d.id === documentId);
       
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const document = {
-          id: docSnap.id,
-          ...data,
-          projectId: data.proyectoId, // Map proyectoId to projectId for API consistency
-          fechaSubida: data.fechaSubida?.toDate() || new Date(),
-          fechaValidacion: data.fechaValidacion?.toDate(),
-          tipo: data.tipo as DocumentType,
-          estado: data.estado as DocumentStatus,
-          version: data.version || 1
-        } as Document;
+      if (!document) {
+        // Si no lo encontramos, cargar todos los documentos de demostración para cada proyecto
+        await Promise.all(['proj-1', 'proj-2', 'proj-3', 'proj-4'].map(
+          projectId => loadDemoDocuments(projectId)
+        ));
         
+        // Buscar de nuevo
+        document = documentStore.documents.find(d => d.id === documentId);
+      }
+      
+      if (document) {
         return document;
       } else {
-        error.value = 'Documento no encontrado'
-        return null
+        error.value = 'Documento no encontrado';
+        return null;
       }
     } catch (err) {
-      console.error('Error fetching document:', err)
-      error.value = 'Error al cargar el documento'
-      return null
+      console.error('Error fetching document:', err);
+      error.value = 'Error al cargar el documento';
+      return null;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
   /**
-   * Upload a new document
+   * Upload a document to a project
    */
   const uploadDocument = async (
     projectId: string,
@@ -154,70 +283,70 @@ export function useDocuments() {
     file: File,
     customName?: string
   ) => {
-    if (!authStore.user) {
-      error.value = 'Usuario no autenticado'
-      return null
-    }
-    
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      // Create a reference to the file in Firebase Storage
-      const fileName = customName || file.name
-      const filePath = `projects/${projectId}/${Date.now()}_${file.name}`
-      const fileRef = storageRef(storage, filePath)
+      console.log('Simulando subida de documento:', {
+        projectId, 
+        tipo, 
+        fileName: file.name,
+        customName
+      });
       
-      // Upload the file
-      await uploadBytesResumable(fileRef, file)
+      // Cargar documentos existentes del proyecto
+      await loadDemoDocuments(projectId);
       
-      // Get the download URL
-      const downloadURL = await getDownloadURL(fileRef)
+      // Crear un nuevo ID único
+      const newId = `doc-${projectId}-${Date.now()}`;
       
-      // Create the document in Firestore
-      const docData = {
-        nombre: fileName,
-        tipo,
-        estado: 'pendiente' as DocumentStatus,
-        proyectoId: projectId,
-        url: downloadURL,
-        storagePath: filePath,
-        fechaSubida: serverTimestamp(),
-        uploadedBy: authStore.user.id,
-        version: 1
+      // Determinar el nombre del documento
+      const docName = customName || file.name;
+      
+      // Generar una URL aleatoria de placeholder según el tipo
+      let placeholderUrl;
+      switch (tipo) {
+        case 'plano':
+          placeholderUrl = 'https://via.placeholder.com/1200x800?text=Plano+Nuevo';
+          break;
+        case 'foto':
+          placeholderUrl = 'https://via.placeholder.com/800x600?text=Foto+Nueva';
+          break;
+        case 'TE1':
+        case 'TE2':
+          placeholderUrl = `https://via.placeholder.com/600x800?text=${tipo}+Nuevo`;
+          break;
+        default:
+          placeholderUrl = `https://via.placeholder.com/600x800?text=${tipo}+Nuevo`;
       }
       
-      const docRef = await addDoc(collection(db, 'documentos'), docData)
-      
-      // Get the document with the ID
+      // Crear el nuevo documento
       const newDocument: Document = {
-        id: docRef.id,
-        ...docData,
-        projectId, // Add projectId for API consistency
-        fechaSubida: new Date()
-      }
-      
-      // Update store
-      documentStore.addDocument(newDocument)
-      
-      // Add to activity log
-      await addDoc(collection(db, 'actividades'), {
-        userId: authStore.user.id,
+        id: newId,
+        projectId: projectId,
         proyectoId: projectId,
-        timestamp: serverTimestamp(),
-        action: 'upload',
-        details: `Subió documento: ${fileName}`,
-        targetId: docRef.id,
-        targetType: 'documento'
-      })
+        tipo: tipo,
+        nombre: docName,
+        url: placeholderUrl,
+        estado: 'pendiente',
+        version: 1,
+        uploadedBy: authStore.user?.id || 'user-demo',
+        fechaSubida: new Date(),
+        storagePath: `/demo/${newId}.${file.name.split('.').pop()}`
+      };
       
-      return newDocument
+      // Añadir el nuevo documento a los existentes
+      const updatedDocuments = [...documentStore.documents, newDocument];
+      documentStore.setDocuments(updatedDocuments);
+      documentStore.setCurrentProjectDocuments(projectId);
+      
+      return newDocument;
     } catch (err) {
-      console.error('Error uploading document:', err)
-      error.value = 'Error al subir el documento'
-      return null
+      console.error('Error uploading document:', err);
+      error.value = 'Error al subir el documento';
+      return null;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
@@ -225,54 +354,44 @@ export function useDocuments() {
    * Validate a document
    */
   const validateDocument = async (documentId: string, comments?: string) => {
-    if (!authStore.user) {
-      error.value = 'Usuario no autenticado'
-      return false
-    }
-    
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      const docRef = doc(db, 'documentos', documentId)
-      const docSnap = await getDoc(docRef)
+      // Obtener el documento
+      const document = await getDocument(documentId);
       
-      if (!docSnap.exists()) {
-        error.value = 'Documento no encontrado'
-        return false
+      if (!document) {
+        error.value = 'Documento no encontrado';
+        return false;
       }
       
-      const document = docSnap.data()
+      // Actualizar el documento localmente
+      const updatedDocument = {
+        ...document,
+        estado: 'validado' as DocumentStatus,
+        validatedBy: authStore.user?.id,
+        validadoPor: authStore.user?.id,
+        fechaValidacion: new Date(),
+        comentarios: comments || 'Documento validado'
+      };
       
-      // Update document
-      await updateDoc(docRef, {
-        estado: 'validado',
-        validadoPor: authStore.user.id,
-        fechaValidacion: serverTimestamp(),
-        comentarios: comments || null
-      })
+      // Actualizar en el store
+      const docIndex = documentStore.documents.findIndex(d => d.id === documentId);
+      if (docIndex !== -1) {
+        const updatedDocuments = [...documentStore.documents];
+        updatedDocuments[docIndex] = updatedDocument;
+        documentStore.setDocuments(updatedDocuments);
+        documentStore.setCurrentProjectDocuments(document.projectId);
+      }
       
-      // Update store
-      documentStore.validateDocument(documentId, authStore.user.id, comments)
-      
-      // Add to activity log
-      await addDoc(collection(db, 'actividades'), {
-        userId: authStore.user.id,
-        proyectoId: document.proyectoId,
-        timestamp: serverTimestamp(),
-        action: 'validate_document',
-        details: `Validó documento: ${document.nombre}`,
-        targetId: documentId,
-        targetType: 'documento'
-      })
-      
-      return true
+      return true;
     } catch (err) {
-      console.error('Error validating document:', err)
-      error.value = 'Error al validar el documento'
-      return false
+      console.error('Error validating document:', err);
+      error.value = 'Error al validar el documento';
+      return false;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
@@ -280,54 +399,44 @@ export function useDocuments() {
    * Reject a document
    */
   const rejectDocument = async (documentId: string, comments?: string) => {
-    if (!authStore.user) {
-      error.value = 'Usuario no autenticado'
-      return false
-    }
-    
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      const docRef = doc(db, 'documentos', documentId)
-      const docSnap = await getDoc(docRef)
+      // Obtener el documento
+      const document = await getDocument(documentId);
       
-      if (!docSnap.exists()) {
-        error.value = 'Documento no encontrado'
-        return false
+      if (!document) {
+        error.value = 'Documento no encontrado';
+        return false;
       }
       
-      const document = docSnap.data()
+      // Actualizar el documento localmente
+      const updatedDocument = {
+        ...document,
+        estado: 'rechazado' as DocumentStatus,
+        validatedBy: authStore.user?.id,
+        validadoPor: authStore.user?.id,
+        fechaValidacion: new Date(),
+        comentarios: comments || 'Documento rechazado'
+      };
       
-      // Update document
-      await updateDoc(docRef, {
-        estado: 'rechazado',
-        validadoPor: authStore.user.id,
-        fechaValidacion: serverTimestamp(),
-        comentarios: comments || null
-      })
+      // Actualizar en el store
+      const docIndex = documentStore.documents.findIndex(d => d.id === documentId);
+      if (docIndex !== -1) {
+        const updatedDocuments = [...documentStore.documents];
+        updatedDocuments[docIndex] = updatedDocument;
+        documentStore.setDocuments(updatedDocuments);
+        documentStore.setCurrentProjectDocuments(document.projectId);
+      }
       
-      // Update store
-      documentStore.rejectDocument(documentId, authStore.user.id, comments)
-      
-      // Add to activity log
-      await addDoc(collection(db, 'actividades'), {
-        userId: authStore.user.id,
-        proyectoId: document.proyectoId,
-        timestamp: serverTimestamp(),
-        action: 'reject_document',
-        details: `Rechazó documento: ${document.nombre}`,
-        targetId: documentId,
-        targetType: 'documento'
-      })
-      
-      return true
+      return true;
     } catch (err) {
-      console.error('Error rejecting document:', err)
-      error.value = 'Error al rechazar el documento'
-      return false
+      console.error('Error rejecting document:', err);
+      error.value = 'Error al rechazar el documento';
+      return false;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
@@ -335,82 +444,52 @@ export function useDocuments() {
    * Delete a document
    */
   const deleteDocument = async (documentId: string) => {
-    if (!authStore.user) {
-      error.value = 'Usuario no autenticado'
-      return false
-    }
-    
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      const docRef = doc(db, 'documentos', documentId)
-      const docSnap = await getDoc(docRef)
+      // Obtener el documento
+      const document = await getDocument(documentId);
       
-      if (!docSnap.exists()) {
-        error.value = 'Documento no encontrado'
-        return false
+      if (!document) {
+        error.value = 'Documento no encontrado';
+        return false;
       }
       
-      const document = docSnap.data()
+      // Eliminar del store
+      const updatedDocuments = documentStore.documents.filter(d => d.id !== documentId);
+      documentStore.setDocuments(updatedDocuments);
+      documentStore.setCurrentProjectDocuments(document.projectId);
       
-      // Delete from Storage
-      if (document.storagePath) {
-        const fileRef = storageRef(storage, document.storagePath)
-        await deleteObject(fileRef)
-      }
-      
-      // Delete from Firestore
-      await deleteDoc(docRef)
-      
-      // Update store
-      documentStore.removeDocument(documentId)
-      
-      // Add to activity log
-      await addDoc(collection(db, 'actividades'), {
-        userId: authStore.user.id,
-        proyectoId: document.proyectoId,
-        timestamp: serverTimestamp(),
-        action: 'delete_document',
-        details: `Eliminó documento: ${document.nombre}`,
-        targetId: documentId,
-        targetType: 'documento'
-      })
-      
-      return true
+      return true;
     } catch (err) {
-      console.error('Error deleting document:', err)
-      error.value = 'Error al eliminar el documento'
-      return false
+      console.error('Error deleting document:', err);
+      error.value = 'Error al eliminar el documento';
+      return false;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
-  // Method to get documents by user (needed for the documents index page)
+  /**
+   * Get documents uploaded by a specific user
+   */
   const getDocumentsByUser = async (userId: string) => {
     isLoading.value = true;
     error.value = null;
     
     try {
-      // First get all projects where the user is assigned
-      const q = query(
-        collection(db, 'projects'),
-        where('tecnicosAsignados', 'array-contains', userId)
+      // Cargar todos los documentos de demostración para cada proyecto
+      await Promise.all(['proj-1', 'proj-2', 'proj-3', 'proj-4'].map(
+        projectId => loadDemoDocuments(projectId)
+      ));
+      
+      // Filtrar documentos por usuario
+      const userDocuments = documentStore.documents.filter(
+        doc => doc.uploadedBy === userId
       );
       
-      const projectsSnapshot = await getDocs(q);
-      const projectIds = projectsSnapshot.docs.map(doc => doc.id);
-      
-      // Clear previous documents
-      documentStore.resetState();
-      
-      // Get documents for each project
-      for (const projectId of projectIds) {
-        await getProjectDocuments(projectId);
-      }
-      
-      return documentStore.documents;
+      return userDocuments;
     } catch (err) {
       console.error('Error fetching user documents:', err);
       error.value = 'Error al cargar los documentos del usuario';
@@ -418,13 +497,14 @@ export function useDocuments() {
     } finally {
       isLoading.value = false;
     }
-  };
-  
+  }
+
   return {
+    documents,
     isLoading,
     error,
-    documents,
     getProjectDocuments,
+    loadDemoDocuments,
     getDocument,
     uploadDocument,
     validateDocument,

@@ -26,7 +26,7 @@
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700;
+    @apply bg-blue-600 text-white hover:bg-blue-700;
   }
   
   .btn-secondary {
@@ -42,7 +42,7 @@
   }
   
   .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500;
+    @apply w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
   }
   
   .badge {

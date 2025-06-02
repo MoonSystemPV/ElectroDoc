@@ -1,11 +1,21 @@
 <template>
-  <NuxtLayout>
+  <div>
     <NuxtPage />
-  </NuxtLayout>
+  </div>
 </template>
 
 <script setup>
-// Add Google Material Icons from CDN
+import { onMounted } from 'vue'
+import { useAuth } from '~/composables/useAuth'
+
+const { initAuth } = useAuth()
+
+onMounted(async () => {
+  console.log('Inicializando aplicación con usuario demo')
+  await initAuth()
+})
+
+// Agregar Google Material Icons desde CDN
 useHead({
   link: [
     {
@@ -15,3 +25,9 @@ useHead({
   ]
 })
 </script>
+
+<style>
+body {
+  font-family: 'Inter', sans-serif;
+}
+</style>

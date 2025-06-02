@@ -1,75 +1,48 @@
 import { defineStore } from 'pinia'
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'
+
+interface User {
+  id: string
+  email: string
+  nombre: string
+  role: string
+  fechaCreacion: Date
+}
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: null as any | null,
-    loading: false,
-    error: null as string | null,
-    initializeAuthCalled: false
+    user: null as User | null,
+    isAuthenticated: false,
+    initialized: false
   }),
   
-  getters: {
-    isAuthenticated: (state) => !!state.user,
-    currentUser: (state) => state.user,
-  },
-  
   actions: {
+    setUser(user: User) {
+      this.user = user
+      this.isAuthenticated = true
+      this.initialized = true
+      console.log('Usuario establecido en el store:', user)
+    },
+    
+    clearUser() {
+      this.user = null
+      this.isAuthenticated = false
+      console.log('Usuario eliminado del store')
+    },
+    
     async initAuth() {
-      const auth = getAuth()
+      this.initialized = true
+      console.log('Autenticación inicializada en el store')
       
-      return new Promise<void>((resolve) => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          this.user = user
-          this.initializeAuthCalled = true
-          unsubscribe()
-          resolve()
-        })
-      })
-    },
-    
-    async login(email: string, password: string) {
-      this.loading = true
-      this.error = null
-      
-      try {
-        const auth = getAuth()
-        const { user } = await signInWithEmailAndPassword(auth, email, password)
-        this.user = user
-        return user
-      } catch (error: any) {
-        this.error = error.message || 'Error al iniciar sesión'
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-    
-    async register(email: string, password: string) {
-      this.loading = true
-      this.error = null
-      
-      try {
-        const auth = getAuth()
-        const { user } = await createUserWithEmailAndPassword(auth, email, password)
-        this.user = user
-        return user
-      } catch (error: any) {
-        this.error = error.message || 'Error al registrar usuario'
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-    
-    async logout() {
-      try {
-        const auth = getAuth()
-        await signOut(auth)
-        this.user = null
-      } catch (error: any) {
-        this.error = error.message || 'Error al cerrar sesión'
-        throw error
+      // Intentar cargar usuario desde localStorage
+      if (!this.user) {
+        try {
+          const savedUser = localStorage.getItem('user')
+          if (savedUser) {
+            this.setUser(JSON.parse(savedUser))
+          }
+        } catch (error) {
+          console.error('Error al cargar usuario desde localStorage:', error)
+        }
       }
     }
   }

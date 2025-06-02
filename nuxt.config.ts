@@ -1,6 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  ssr: false, // Disable server-side rendering for Firebase authentication
+  ssr: false, // Disable server-side rendering
   devtools: { enabled: true },
   css: ['~/assets/css/main.css'],
   modules: [
@@ -14,7 +14,7 @@ export default defineNuxtConfig({
     viewer: true
   },
   pinia: {
-    autoImports: ['defineStore', 'acceptHMRUpdate'],
+    autoImports: ['defineStore', 'acceptHMRUpdate', 'storeToRefs'],
   },
   app: {
     head: {
@@ -25,21 +25,24 @@ export default defineNuxtConfig({
         { name: 'description', content: 'Plataforma de gestión documental para ElectroSur Ltda.' }
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/icon?family=Material+Icons' },
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' }
       ]
     }
   },
-  runtimeConfig: {
-    public: {
-      firebaseConfig: {
-        // Firebase config will be set via environment variables
-        apiKey: process.env.FIREBASE_API_KEY || 'demo-api-key',
-        authDomain: process.env.FIREBASE_AUTH_DOMAIN || 'demo-project.firebaseapp.com',
-        projectId: process.env.FIREBASE_PROJECT_ID || 'demo-project',
-        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'demo-project.appspot.com',
-        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '123456789',
-        appId: process.env.FIREBASE_APP_ID || '1:123456789:web:abcdef'
-      }
+  router: {
+    options: {
+      strict: false
+    }
+  },
+  nitro: {
+    compatibilityDate: '2025-06-02'
+  },
+  postcss: {
+    plugins: {
+      tailwindcss: {},
+      autoprefixer: {}
     }
   }
 })

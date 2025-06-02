@@ -1,24 +1,6 @@
 import { ref } from 'vue'
-import {
-  collection,
-  doc,
-  addDoc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  Timestamp,
-  serverTimestamp,
-  arrayUnion,
-  arrayRemove,
-  limit
-} from 'firebase/firestore'
-import type { Firestore, DocumentData } from 'firebase/firestore'
-import { useNuxtApp } from '#app'
 import { useAuth } from '~/composables/useAuth'
+import { useProjectStore } from '~/stores/projects'
 
 export interface Project {
   id: string
@@ -34,60 +16,13 @@ export interface Project {
   updatedAt: Date
 }
 
-// Interface representing the Firestore document data structure
-interface ProjectFirestoreData {
-  nombre: string
-  cliente: string
-  descripcion?: string
-  fechaInicio: Timestamp | Date
-  fechaVencimiento?: Timestamp | Date | null
-  ubicacion?: string
-  estado: 'activo' | 'completado' | 'cancelado'
-  tecnicosAsignados: string[]
-  createdAt: Timestamp | Date
-  updatedAt: Timestamp | Date
-  createdBy?: string
-}
-
 export const useProjects = () => {
-  const { $firebase } = useNuxtApp()
   const { user } = useAuth()
-  
-  // Access Firebase services with proper typing
-  const db = $firebase.firestore as Firestore
+  const projectStore = useProjectStore()
   
   const projects = ref<Project[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  
-  /**
-   * Helper function to convert Firestore data to Project
-   */
-  const convertToProject = (docId: string, data: ProjectFirestoreData): Project => {
-    return {
-      id: docId,
-      nombre: data.nombre,
-      cliente: data.cliente,
-      descripcion: data.descripcion,
-      fechaInicio: data.fechaInicio instanceof Timestamp 
-        ? data.fechaInicio.toDate() 
-        : new Date(data.fechaInicio),
-      fechaVencimiento: data.fechaVencimiento 
-        ? data.fechaVencimiento instanceof Timestamp 
-          ? data.fechaVencimiento.toDate() 
-          : new Date(data.fechaVencimiento)
-        : null,
-      ubicacion: data.ubicacion,
-      estado: data.estado,
-      tecnicosAsignados: data.tecnicosAsignados || [],
-      createdAt: data.createdAt instanceof Timestamp 
-        ? data.createdAt.toDate() 
-        : new Date(data.createdAt),
-      updatedAt: data.updatedAt instanceof Timestamp 
-        ? data.updatedAt.toDate() 
-        : new Date(data.updatedAt)
-    }
-  }
   
   /**
    * Get all projects with optional filtering
@@ -101,47 +36,88 @@ export const useProjects = () => {
     error.value = null
     
     try {
-      const projectsRef = collection(db, 'projects')
-      let projectQuery: any = projectsRef
-      
-      // Build query with filters
-      if (options) {
-        const constraints = []
-        
-        if (options.filterByStatus) {
-          constraints.push(where('estado', '==', options.filterByStatus))
-        }
-        
-        if (options.filterByTechnician) {
-          constraints.push(where('tecnicosAsignados', 'array-contains', options.filterByTechnician))
-        }
-        
-        constraints.push(orderBy('createdAt', 'desc'))
-        
-        if (options.limit) {
-          constraints.push(limit(options.limit))
-        }
-        
-        projectQuery = query(projectsRef, ...constraints)
-      } else {
-        projectQuery = query(projectsRef, orderBy('createdAt', 'desc'))
-      }
-      
-      const querySnapshot = await getDocs(projectQuery)
-      
-      projects.value = querySnapshot.docs.map(doc => {
-        const data = doc.data() as ProjectFirestoreData
-        return convertToProject(doc.id, data)
-      })
-      
-      return projects.value
+      console.log('Usando datos de demostración directamente')
+      // Cargar proyectos de demostración en lugar de intentar usar Firestore
+      await loadDemoProjects();
+      return projectStore.projects;
     } catch (err) {
       console.error('Error fetching projects:', err)
       error.value = 'Error al cargar los proyectos'
-      return []
+      
+      // Si hay error, cargar proyectos de demostración
+      await loadDemoProjects();
+      return projectStore.projects;
     } finally {
       isLoading.value = false
     }
+  }
+  
+  /**
+   * Carga proyectos de demostración cuando no se pueden obtener de Firestore
+   */
+  const loadDemoProjects = async () => {
+    console.log('Cargando proyectos de demostración');
+    
+    const demoProjects: Project[] = [
+      {
+        id: 'proj-1',
+        nombre: 'Subestación Centro Comercial',
+        cliente: 'Grupo Inmobiliario XYZ',
+        descripcion: 'Instalación y configuración de subestación eléctrica para nuevo centro comercial',
+        fechaInicio: new Date(2023, 5, 15),
+        fechaVencimiento: new Date(2023, 11, 30),
+        ubicacion: 'Av. Principal 123, Ciudad',
+        estado: 'activo',
+        tecnicosAsignados: [user.value?.id || 'tech-1'],
+        createdAt: new Date(2023, 5, 10),
+        updatedAt: new Date(2023, 5, 10)
+      },
+      {
+        id: 'proj-2',
+        nombre: 'Mantenimiento Línea 220kV',
+        cliente: 'Distribuidora Eléctrica Nacional',
+        descripcion: 'Mantenimiento preventivo de línea de transmisión de 220kV',
+        fechaInicio: new Date(2023, 3, 5),
+        fechaVencimiento: new Date(2023, 8, 15),
+        ubicacion: 'Sector Norte, Tramo 5-8',
+        estado: 'activo',
+        tecnicosAsignados: [user.value?.id || 'tech-1'],
+        createdAt: new Date(2023, 3, 1),
+        updatedAt: new Date(2023, 3, 1)
+      },
+      {
+        id: 'proj-3',
+        nombre: 'Instalación Paneles Solares',
+        cliente: 'EcoEnergía SA',
+        descripcion: 'Instalación de sistema de paneles solares para planta industrial',
+        fechaInicio: new Date(2023, 2, 10),
+        fechaVencimiento: new Date(2023, 7, 20),
+        ubicacion: 'Zona Industrial Este',
+        estado: 'completado',
+        tecnicosAsignados: [user.value?.id || 'tech-1'],
+        createdAt: new Date(2023, 2, 5),
+        updatedAt: new Date(2023, 7, 20)
+      },
+      {
+        id: 'proj-4',
+        nombre: 'Modernización Planta Energética',
+        cliente: 'Industrias Manufacturas',
+        descripcion: 'Actualización y modernización de sistemas eléctricos en planta de producción',
+        fechaInicio: new Date(2023, 1, 15),
+        fechaVencimiento: null,
+        ubicacion: 'Polígono Industrial Sur',
+        estado: 'cancelado',
+        tecnicosAsignados: [],
+        createdAt: new Date(2023, 1, 10),
+        updatedAt: new Date(2023, 4, 5)
+      }
+    ];
+    
+    // Guardar proyectos en el store
+    projectStore.setProjects(demoProjects);
+    projects.value = demoProjects;
+    
+    return demoProjects;
   }
   
   /**
@@ -153,9 +129,15 @@ export const useProjects = () => {
       return []
     }
     
-    return getProjects({
-      filterByTechnician: user.value.id
-    })
+    // Llamamos directamente a loadDemoProjects
+    const allProjects = await loadDemoProjects();
+    
+    // Filtramos por el id del usuario actual
+    const userProjects = allProjects.filter(project => 
+      project.tecnicosAsignados.includes(user.value?.id || '')
+    );
+    
+    return userProjects;
   }
   
   /**
@@ -166,21 +148,24 @@ export const useProjects = () => {
     error.value = null
     
     try {
-      const docRef = doc(db, 'projects', id)
-      const docSnap = await getDoc(docRef)
+      // Cargar todos los proyectos demo
+      await loadDemoProjects();
       
-      if (docSnap.exists()) {
-        const data = docSnap.data() as ProjectFirestoreData
-        return convertToProject(docSnap.id, data)
+      // Buscar el proyecto por ID
+      const project = projectStore.projects.find(p => p.id === id);
+      
+      if (project) {
+        return project;
+      } else {
+        error.value = 'Proyecto no encontrado';
+        return null;
       }
-      
-      return null
     } catch (err) {
-      console.error('Error fetching project:', err)
-      error.value = 'Error al cargar el proyecto'
-      return null
+      console.error('Error fetching project:', err);
+      error.value = 'Error al cargar el proyecto';
+      return null;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
@@ -188,87 +173,83 @@ export const useProjects = () => {
    * Create a new project
    */
   const createProject = async (projectData: Partial<Project>) => {
-    isLoading.value = true
-    error.value = null
-    
-    if (!user.value?.id) {
-      error.value = 'Usuario no autenticado'
-      return null
-    }
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      const projectsRef = collection(db, 'projects')
+      // Generar un ID único para el nuevo proyecto
+      const newId = 'proj-' + Date.now();
       
-      // Add timestamps
-      const now = serverTimestamp()
-      const newProject = {
-        ...projectData,
-        createdBy: user.value.id,
-        createdAt: now,
-        updatedAt: now,
-        tecnicosAsignados: projectData.tecnicosAsignados || []
-      }
+      // Crear el objeto del nuevo proyecto
+      const newProject: Project = {
+        id: newId,
+        nombre: projectData.nombre || 'Nuevo Proyecto',
+        cliente: projectData.cliente || 'Cliente',
+        descripcion: projectData.descripcion || '',
+        fechaInicio: projectData.fechaInicio || new Date(),
+        fechaVencimiento: projectData.fechaVencimiento || null,
+        ubicacion: projectData.ubicacion || '',
+        estado: projectData.estado || 'activo',
+        tecnicosAsignados: projectData.tecnicosAsignados || [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
       
-      // Add document to Firestore
-      const docRef = await addDoc(projectsRef, newProject)
+      // Cargar proyectos existentes
+      await loadDemoProjects();
       
-      // Get the created project with its ID
-      const project = await getProjectById(docRef.id)
+      // Añadir el nuevo proyecto
+      const updatedProjects = [...projectStore.projects, newProject];
+      projectStore.setProjects(updatedProjects);
       
-      // Update local projects list
-      if (project) {
-        projects.value.unshift(project)
-      }
-      
-      return project
+      return newProject;
     } catch (err) {
-      console.error('Error creating project:', err)
-      error.value = 'Error al crear el proyecto'
-      return null
+      console.error('Error creating project:', err);
+      error.value = 'Error al crear el proyecto';
+      return null;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
   /**
-   * Update a project
+   * Update an existing project
    */
   const updateProject = async (id: string, projectData: Partial<Project>) => {
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      const docRef = doc(db, 'projects', id)
+      // Cargar proyectos existentes
+      await loadDemoProjects();
       
-      // Ensure we're not overwriting the timestamps
-      const updateData = {
+      // Buscar el proyecto a actualizar
+      const projectIndex = projectStore.projects.findIndex(p => p.id === id);
+      
+      if (projectIndex === -1) {
+        error.value = 'Proyecto no encontrado';
+        return null;
+      }
+      
+      // Actualizar el proyecto
+      const updatedProject = {
+        ...projectStore.projects[projectIndex],
         ...projectData,
-        updatedAt: serverTimestamp()
-      }
+        updatedAt: new Date()
+      };
       
-      delete updateData.id
-      delete updateData.createdAt
+      // Actualizar la lista de proyectos
+      const updatedProjects = [...projectStore.projects];
+      updatedProjects[projectIndex] = updatedProject;
+      projectStore.setProjects(updatedProjects);
       
-      // Update document in Firestore
-      await updateDoc(docRef, updateData)
-      
-      // Update local projects list
-      const index = projects.value.findIndex(p => p.id === id)
-      if (index !== -1) {
-        projects.value[index] = {
-          ...projects.value[index],
-          ...projectData,
-          updatedAt: new Date()
-        }
-      }
-      
-      return true
+      return updatedProject;
     } catch (err) {
-      console.error('Error updating project:', err)
-      error.value = 'Error al actualizar el proyecto'
-      return false
+      console.error('Error updating project:', err);
+      error.value = 'Error al actualizar el proyecto';
+      return null;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
@@ -276,25 +257,26 @@ export const useProjects = () => {
    * Delete a project
    */
   const deleteProject = async (id: string) => {
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      const docRef = doc(db, 'projects', id)
+      // Cargar proyectos existentes
+      await loadDemoProjects();
       
-      // Delete document from Firestore
-      await deleteDoc(docRef)
+      // Filtrar el proyecto a eliminar
+      const updatedProjects = projectStore.projects.filter(p => p.id !== id);
       
-      // Remove from local projects list
-      projects.value = projects.value.filter(p => p.id !== id)
+      // Actualizar el store
+      projectStore.setProjects(updatedProjects);
       
-      return true
+      return true;
     } catch (err) {
-      console.error('Error deleting project:', err)
-      error.value = 'Error al eliminar el proyecto'
-      return false
+      console.error('Error deleting project:', err);
+      error.value = 'Error al eliminar el proyecto';
+      return false;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
@@ -302,32 +284,45 @@ export const useProjects = () => {
    * Assign a technician to a project
    */
   const assignTechnician = async (projectId: string, technicianId: string) => {
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      const docRef = doc(db, 'projects', projectId)
+      // Cargar proyectos existentes
+      await loadDemoProjects();
       
-      // Add technician to the project's tecnicosAsignados array
-      await updateDoc(docRef, {
-        tecnicosAsignados: arrayUnion(technicianId),
-        updatedAt: serverTimestamp()
-      })
+      // Buscar el proyecto
+      const projectIndex = projectStore.projects.findIndex(p => p.id === projectId);
       
-      // Update local projects list
-      const project = projects.value.find(p => p.id === projectId)
-      if (project && !project.tecnicosAsignados.includes(technicianId)) {
-        project.tecnicosAsignados.push(technicianId)
-        project.updatedAt = new Date()
+      if (projectIndex === -1) {
+        error.value = 'Proyecto no encontrado';
+        return false;
       }
       
-      return true
+      // Verificar si el técnico ya está asignado
+      if (projectStore.projects[projectIndex].tecnicosAsignados.includes(technicianId)) {
+        return true; // Ya está asignado, no hacemos nada
+      }
+      
+      // Añadir el técnico al proyecto
+      const updatedProject = {
+        ...projectStore.projects[projectIndex],
+        tecnicosAsignados: [...projectStore.projects[projectIndex].tecnicosAsignados, technicianId],
+        updatedAt: new Date()
+      };
+      
+      // Actualizar la lista de proyectos
+      const updatedProjects = [...projectStore.projects];
+      updatedProjects[projectIndex] = updatedProject;
+      projectStore.setProjects(updatedProjects);
+      
+      return true;
     } catch (err) {
-      console.error('Error assigning technician:', err)
-      error.value = 'Error al asignar técnico al proyecto'
-      return false
+      console.error('Error assigning technician:', err);
+      error.value = 'Error al asignar técnico';
+      return false;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
   
@@ -335,40 +330,49 @@ export const useProjects = () => {
    * Remove a technician from a project
    */
   const removeTechnician = async (projectId: string, technicianId: string) => {
-    isLoading.value = true
-    error.value = null
+    isLoading.value = true;
+    error.value = null;
     
     try {
-      const docRef = doc(db, 'projects', projectId)
+      // Cargar proyectos existentes
+      await loadDemoProjects();
       
-      // Remove technician from the project's tecnicosAsignados array
-      await updateDoc(docRef, {
-        tecnicosAsignados: arrayRemove(technicianId),
-        updatedAt: serverTimestamp()
-      })
+      // Buscar el proyecto
+      const projectIndex = projectStore.projects.findIndex(p => p.id === projectId);
       
-      // Update local projects list
-      const project = projects.value.find(p => p.id === projectId)
-      if (project) {
-        project.tecnicosAsignados = project.tecnicosAsignados.filter(id => id !== technicianId)
-        project.updatedAt = new Date()
+      if (projectIndex === -1) {
+        error.value = 'Proyecto no encontrado';
+        return false;
       }
       
-      return true
+      // Eliminar el técnico del proyecto
+      const updatedProject = {
+        ...projectStore.projects[projectIndex],
+        tecnicosAsignados: projectStore.projects[projectIndex].tecnicosAsignados.filter(id => id !== technicianId),
+        updatedAt: new Date()
+      };
+      
+      // Actualizar la lista de proyectos
+      const updatedProjects = [...projectStore.projects];
+      updatedProjects[projectIndex] = updatedProject;
+      projectStore.setProjects(updatedProjects);
+      
+      return true;
     } catch (err) {
-      console.error('Error removing technician:', err)
-      error.value = 'Error al eliminar técnico del proyecto'
-      return false
+      console.error('Error removing technician:', err);
+      error.value = 'Error al eliminar técnico';
+      return false;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
-  
+
   return {
     projects,
     isLoading,
     error,
     getProjects,
+    loadDemoProjects,
     getUserProjects,
     getProjectById,
     createProject,

@@ -2,95 +2,67 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Project } from '~/composables/useProjects'
 
-export const useProjectStore = defineStore('projects', () => {
-  // State
-  const projects = ref<Project[]>([])
-  const currentProject = ref<Project | null>(null)
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
+export const useProjectStore = defineStore('projects', {
+  state: () => ({
+    projects: [] as Project[],
+    currentProject: null as Project | null,
+    isLoading: false,
+    error: null as string | null
+  }),
   
-  // Getters
-  const activeProjects = computed(() => {
-    return projects.value.filter(project => project.estado === 'activo')
-  })
+  getters: {
+    getProjectById: (state) => {
+      return (id: string) => state.projects.find(project => project.id === id)
+    },
+    activeProjects() {
+      return this.projects.filter(project => project.estado === 'activo')
+    },
+    completedProjects() {
+      return this.projects.filter(project => project.estado === 'completado')
+    },
+    canceledProjects() {
+      return this.projects.filter(project => project.estado === 'cancelado')
+    }
+  },
   
-  const completedProjects = computed(() => {
-    return projects.value.filter(project => project.estado === 'completado')
-  })
-  
-  const canceledProjects = computed(() => {
-    return projects.value.filter(project => project.estado === 'cancelado')
-  })
-  
-  // Actions
-  function setProjects(projectList: Project[]) {
-    projects.value = projectList
-  }
-  
-  function setCurrentProject(project: Project | null) {
-    currentProject.value = project
-  }
-  
-  function addProject(project: Project) {
-    projects.value.push(project)
-  }
-  
-  function updateProject(id: string, data: Partial<Project>) {
-    const index = projects.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      projects.value[index] = { ...projects.value[index], ...data }
-      
-      // Update current project if it's the same
-      if (currentProject.value && currentProject.value.id === id) {
-        currentProject.value = { ...currentProject.value, ...data }
+  actions: {
+    setProjects(projects: Project[]) {
+      this.projects = projects
+      console.log('Proyectos actualizados en el store:', projects.length)
+    },
+    
+    addProject(project: Project) {
+      this.projects.push(project)
+    },
+    
+    updateProject(updatedProject: Project) {
+      const index = this.projects.findIndex(p => p.id === updatedProject.id)
+      if (index !== -1) {
+        this.projects[index] = updatedProject
       }
+    },
+    
+    removeProject(id: string) {
+      this.projects = this.projects.filter(p => p.id !== id)
+    },
+    
+    setCurrentProject(project: Project | null) {
+      this.currentProject = project
+    },
+    
+    setLoading(status: boolean) {
+      this.isLoading = status
+    },
+    
+    setError(message: string | null) {
+      this.error = message
+    },
+    
+    resetState() {
+      this.projects = []
+      this.currentProject = null
+      this.isLoading = false
+      this.error = null
     }
-  }
-  
-  function removeProject(id: string) {
-    projects.value = projects.value.filter(p => p.id !== id)
-    
-    // Reset current project if it's the same
-    if (currentProject.value && currentProject.value.id === id) {
-      currentProject.value = null
-    }
-  }
-  
-  function setLoading(status: boolean) {
-    isLoading.value = status
-  }
-  
-  function setError(message: string | null) {
-    error.value = message
-  }
-  
-  function resetState() {
-    projects.value = []
-    currentProject.value = null
-    isLoading.value = false
-    error.value = null
-  }
-  
-  return {
-    // State
-    projects,
-    currentProject,
-    isLoading,
-    error,
-    
-    // Getters
-    activeProjects,
-    completedProjects,
-    canceledProjects,
-    
-    // Actions
-    setProjects,
-    setCurrentProject,
-    addProject,
-    updateProject,
-    removeProject,
-    setLoading,
-    setError,
-    resetState
   }
 }) 
