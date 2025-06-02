@@ -1,49 +1,25 @@
 import { defineStore } from 'pinia'
-
-interface User {
-  id: string
-  email: string
-  nombre: string
-  role: string
-  fechaCreacion: Date
-}
+import type { User } from '~/types/user'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as User | null,
-    isAuthenticated: false,
-    initialized: false
   }),
   
   actions: {
     setUser(user: User) {
       this.user = user
-      this.isAuthenticated = true
-      this.initialized = true
-      console.log('Usuario establecido en el store:', user)
     },
     
     clearUser() {
       this.user = null
-      this.isAuthenticated = false
-      console.log('Usuario eliminado del store')
-    },
-    
-    async initAuth() {
-      this.initialized = true
-      console.log('Autenticación inicializada en el store')
-      
-      // Intentar cargar usuario desde localStorage
-      if (!this.user) {
-        try {
-          const savedUser = localStorage.getItem('user')
-          if (savedUser) {
-            this.setUser(JSON.parse(savedUser))
-          }
-        } catch (error) {
-          console.error('Error al cargar usuario desde localStorage:', error)
-        }
-      }
     }
+  },
+  
+  getters: {
+    isAuthenticated: (state) => !!state.user,
+    isAdmin: (state) => state.user?.role === 'admin' || state.user?.role === 'administrativo',
+    isSupervisor: (state) => state.user?.role === 'supervisor',
+    isTechnician: (state) => state.user?.role === 'tecnico'
   }
 }) 

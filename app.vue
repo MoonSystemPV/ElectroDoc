@@ -1,17 +1,14 @@
 <template>
-  <div>
-    <NuxtPage />
-  </div>
+  <NuxtPage />
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 
-const { initAuth } = useAuth()
-
+// Inicializar autenticación cuando la aplicación se carga
 onMounted(async () => {
-  console.log('Inicializando aplicación con usuario demo')
+  const { initAuth } = useAuth()
   await initAuth()
 })
 
@@ -29,5 +26,7 @@ useHead({
 <style>
 body {
   font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
 }
 </style>

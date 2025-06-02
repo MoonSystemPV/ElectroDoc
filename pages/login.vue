@@ -6,7 +6,7 @@
         Iniciar sesión
       </h2>
       <p class="mt-2 text-center text-sm text-gray-600">
-        Ingrese a su cuenta para gestionar sus documentos
+        Acceso al sistema de gestión documental
       </p>
     </div>
 
@@ -71,12 +71,6 @@
                 Recordarme
               </label>
             </div>
-
-            <div class="text-sm">
-              <NuxtLink to="/forgot-password" class="font-medium text-blue-600 hover:text-blue-500">
-                ¿Olvidó su contraseña?
-              </NuxtLink>
-            </div>
           </div>
 
           <div>
@@ -91,49 +85,21 @@
           </div>
         </form>
         
-        <!-- Accesos rápidos de demostración -->
+        <!-- Información de credenciales para la demo -->
         <div class="mt-6">
           <div class="relative">
             <div class="absolute inset-0 flex items-center">
               <div class="w-full border-t border-gray-300"></div>
             </div>
             <div class="relative flex justify-center text-sm">
-              <span class="px-2 bg-white text-gray-500">Accesos de demostración</span>
+              <span class="px-2 bg-white text-gray-500">Información</span>
             </div>
           </div>
           
-          <div class="mt-4 grid grid-cols-3 gap-3">
-            <button 
-              type="button" 
-              @click="quickLogin('admin')" 
-              class="bg-blue-50 text-blue-700 py-2 px-4 rounded text-sm hover:bg-blue-100"
-            >
-              Administrador
-            </button>
-            <button 
-              type="button" 
-              @click="quickLogin('supervisor')" 
-              class="bg-green-50 text-green-700 py-2 px-4 rounded text-sm hover:bg-green-100"
-            >
-              Supervisor
-            </button>
-            <button 
-              type="button" 
-              @click="quickLogin('tecnico')" 
-              class="bg-yellow-50 text-yellow-700 py-2 px-4 rounded text-sm hover:bg-yellow-100"
-            >
-              Técnico
-            </button>
+          <div class="mt-4 bg-gray-50 p-4 rounded">
+            <p class="text-sm text-gray-700 mb-1">Usuario administrador: <span class="font-medium">alexanderviveros9@gmail.com</span></p>
+            <p class="text-sm text-gray-700">Inicie sesión con su contraseña de Firebase</p>
           </div>
-        </div>
-        
-        <div class="mt-6 text-center">
-          <p class="text-sm text-gray-600">
-            ¿No tiene una cuenta?
-            <NuxtLink to="/register" class="font-medium text-blue-600 hover:text-blue-500">
-              Registrarse
-            </NuxtLink>
-          </p>
         </div>
       </div>
     </div>
@@ -149,48 +115,37 @@ const router = useRouter()
 const { login, isLoading, error: authError, initAuth } = useAuth()
 
 // Form data
-const email = ref('admin@example.com')
-const password = ref('password')
+const email = ref('alexanderviveros9@gmail.com')
+const password = ref('')
 const rememberMe = ref(false)
 
 // Inicializar autenticación cuando la página se carga
-onMounted(async () => {
-  await initAuth()
+onMounted(() => {
+  // Iniciar el listener de autenticación
+  const unsubscribe = initAuth()
+  
+  // No es necesario limpiar el listener aquí, ya que queremos que persista
 })
 
 // Handle login form submission
 const handleLogin = async () => {
+  if (!email.value || !password.value) {
+    return
+  }
+  
   try {
+    console.log('Intentando iniciar sesión con Firebase...')
     const success = await login(email.value, password.value)
     
     if (success) {
-      // Navigate to projects page on successful login
-      router.push('/projects')
+      // Navigate to dashboard on successful login
+      console.log('Login exitoso, redirigiendo a dashboard')
+      router.push('/dashboard')
+    } else {
+      console.error('Error de login, mensaje:', authError.value)
     }
   } catch (err) {
-    console.error('Login error:', err)
+    console.error('Error de excepción en login:', err)
   }
-}
-
-// Acceso rápido con roles predefinidos
-const quickLogin = async (role) => {
-  let demoEmail = '';
-  
-  switch (role) {
-    case 'admin':
-      demoEmail = 'admin@example.com';
-      break;
-    case 'supervisor':
-      demoEmail = 'supervisor@example.com';
-      break;
-    case 'tecnico':
-      demoEmail = 'tecnico@example.com';
-      break;
-  }
-  
-  email.value = demoEmail;
-  password.value = 'password';
-  
-  await handleLogin();
 }
 </script> 

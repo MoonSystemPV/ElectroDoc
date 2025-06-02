@@ -3,118 +3,80 @@
     <div class="p-6">
       <h1 class="text-2xl font-bold mb-4">Dashboard</h1>
       
-      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-6">
-        <!-- Statistics Card -->
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-medium text-gray-900 mb-4">Proyectos Activos</h2>
-          <p class="text-3xl font-bold text-blue-600">12</p>
-          <p class="mt-2 text-sm text-gray-500">Aumento del 8% en el último mes</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Tarjeta de resumen de proyectos -->
+        <div class="bg-white p-6 rounded-lg shadow">
+          <div class="flex items-center mb-4">
+            <span class="material-icons text-blue-500 mr-2">engineering</span>
+            <h2 class="text-lg font-semibold">Proyectos</h2>
+          </div>
+          <p class="text-3xl font-bold mb-2">5</p>
+          <p class="text-gray-500 text-sm">Proyectos activos</p>
         </div>
         
-        <!-- Documents Card -->
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-medium text-gray-900 mb-4">Documentos Recientes</h2>
-          <p class="text-3xl font-bold text-blue-600">48</p>
-          <p class="mt-2 text-sm text-gray-500">16 documentos nuevos esta semana</p>
+        <!-- Tarjeta de resumen de documentos -->
+        <div class="bg-white p-6 rounded-lg shadow">
+          <div class="flex items-center mb-4">
+            <span class="material-icons text-green-500 mr-2">description</span>
+            <h2 class="text-lg font-semibold">Documentos</h2>
+          </div>
+          <p class="text-3xl font-bold mb-2">24</p>
+          <p class="text-gray-500 text-sm">Documentos gestionados</p>
         </div>
         
-        <!-- Tasks Card -->
-        <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-medium text-gray-900 mb-4">Tareas Pendientes</h2>
-          <p class="text-3xl font-bold text-blue-600">7</p>
-          <p class="mt-2 text-sm text-gray-500">2 tareas con vencimiento hoy</p>
+        <!-- Tarjeta de resumen de usuarios -->
+        <div class="bg-white p-6 rounded-lg shadow">
+          <div class="flex items-center mb-4">
+            <span class="material-icons text-purple-500 mr-2">people</span>
+            <h2 class="text-lg font-semibold">Usuarios</h2>
+          </div>
+          <p class="text-3xl font-bold mb-2">7</p>
+          <p class="text-gray-500 text-sm">Usuarios activos</p>
         </div>
       </div>
       
-      <!-- Recent Activity -->
-      <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-lg font-medium text-gray-900 mb-4">Actividad Reciente</h2>
-        <ul class="divide-y divide-gray-200">
-          <li class="py-4">
-            <div class="flex items-center space-x-4">
-              <div class="flex-shrink-0">
-                <span class="material-icons text-blue-500">description</span>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">
-                  Informe técnico actualizado
-                </p>
-                <p class="text-sm text-gray-500 truncate">
-                  Proyecto Subestación Central
-                </p>
-              </div>
-              <div>
-                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Completado</span>
-              </div>
+      <div class="mt-6 bg-white p-6 rounded-lg shadow">
+        <h2 class="text-lg font-semibold mb-4">Actividad Reciente</h2>
+        <div class="space-y-4">
+          <div class="flex items-start">
+            <span class="material-icons text-blue-500 mr-2">task_alt</span>
+            <div>
+              <p class="font-medium">Documento aprobado</p>
+              <p class="text-sm text-gray-500">Plano eléctrico Proyecto Norte - hace 2 horas</p>
             </div>
-          </li>
-          <li class="py-4">
-            <div class="flex items-center space-x-4">
-              <div class="flex-shrink-0">
-                <span class="material-icons text-blue-500">folder_shared</span>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">
-                  Compartido con cliente
-                </p>
-                <p class="text-sm text-gray-500 truncate">
-                  Documentación técnica - Proyecto Línea 220kV
-                </p>
-              </div>
-              <div>
-                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Compartido</span>
-              </div>
+          </div>
+          <div class="flex items-start">
+            <span class="material-icons text-green-500 mr-2">add_circle</span>
+            <div>
+              <p class="font-medium">Nuevo proyecto creado</p>
+              <p class="text-sm text-gray-500">Instalación Eléctrica Edificio Central - hace 1 día</p>
             </div>
-          </li>
-          <li class="py-4">
-            <div class="flex items-center space-x-4">
-              <div class="flex-shrink-0">
-                <span class="material-icons text-blue-500">edit</span>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">
-                  Revisión de planos eléctricos
-                </p>
-                <p class="text-sm text-gray-500 truncate">
-                  Proyecto Subestación Norte
-                </p>
-              </div>
-              <div>
-                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">En progreso</span>
-              </div>
+          </div>
+          <div class="flex items-start">
+            <span class="material-icons text-amber-500 mr-2">upload_file</span>
+            <div>
+              <p class="font-medium">Documento subido</p>
+              <p class="text-sm text-gray-500">Certificado TE1 Proyecto Sur - hace 2 días</p>
             </div>
-          </li>
-        </ul>
+          </div>
+        </div>
       </div>
     </div>
   </MainLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useAuth } from '~/composables/useAuth'
-import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
 import MainLayout from '~/components/layout/MainLayout.vue'
+import { useAuth } from '~/composables/useAuth'
 
-// Definir que esta página requiere autenticación
 definePageMeta({
   middleware: ['auth']
 })
 
-const { user, logout } = useAuth()
-const router = useRouter()
-
-// Manejar el cierre de sesión
-const handleLogout = async () => {
-  try {
-    await logout()
-    router.push('/login')
-  } catch (error) {
-    console.error('Error al cerrar sesión:', error)
-  }
-}
+const { user } = useAuth()
 
 onMounted(() => {
-  console.log('Dashboard montado')
+  console.log('Dashboard cargado para usuario:', user.value?.nombre)
 })
 </script> 

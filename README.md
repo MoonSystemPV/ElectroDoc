@@ -73,15 +73,18 @@ La aplicación estará disponible en [http://localhost:3000](http://localhost:30
 
 ## 🔑 Acceso a Cuentas Demo
 
-El sistema incluye tres tipos de usuarios demo para pruebas:
+El sistema incluye un usuario administrador predefinido:
 
 | Rol | Email | Contraseña | Descripción |
 |-----|-------|------------|-------------|
-| Administrador | admin@example.com | password | Acceso completo al sistema, incluida la gestión de usuarios |
-| Supervisor | supervisor@example.com | password | Puede gestionar proyectos y validar documentos |
-| Técnico | tecnico@example.com | password | Acceso limitado para subir documentos y gestionar sus proyectos asignados |
+| Administrador | admin@electrosur.com | admin123 | Acceso completo al sistema, incluida la gestión de usuarios |
 
-También puedes utilizar los botones de acceso rápido en la página de login para acceder con diferentes roles.
+El administrador puede crear cuentas para:
+
+- **Supervisores**: Pueden gestionar proyectos y validar documentos
+- **Técnicos**: Acceso limitado para subir documentos y gestionar sus proyectos asignados
+
+Todas las cuentas creadas por el administrador tendrán una contraseña por defecto: `password123`
 
 ## 📁 Estructura del Proyecto
 
