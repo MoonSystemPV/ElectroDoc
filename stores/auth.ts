@@ -4,15 +4,22 @@ import type { User } from '~/types/user'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as User | null,
+    initialized: false
   }),
   
   actions: {
     setUser(user: User) {
       this.user = user
+      this.initialized = true
     },
     
     clearUser() {
       this.user = null
+      this.initialized = true
+    },
+    
+    setInitialized(value: boolean) {
+      this.initialized = value
     }
   },
   

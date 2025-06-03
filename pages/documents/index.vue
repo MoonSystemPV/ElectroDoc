@@ -6,7 +6,7 @@
       <div class="bg-white p-6 rounded-lg shadow">
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Proyecto</label>
-          <select
+            <select
             v-model="selectedProjectId"
             @change="loadDocumentsForProject"
             class="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md"
@@ -15,15 +15,15 @@
             <option v-for="project in projects" :key="project.id" :value="project.id">
               {{ project.nombre }}
             </option>
-          </select>
-        </div>
-        
+            </select>
+      </div>
+      
         <div v-if="selectedProjectId" class="mb-4">
           <button @click="showUploadModal = true" class="px-4 py-2 bg-blue-600 text-white rounded">
-            Subir Documento
-          </button>
-        </div>
-        
+          Subir Documento
+        </button>
+      </div>
+      
         <div v-if="isLoading" class="text-center p-4">
           <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
           <p class="mt-2">Cargando documentos...</p>
@@ -45,54 +45,54 @@
               <div class="flex mt-2">
                 <a :href="doc.url" target="_blank" class="text-blue-600 mr-3">Ver</a>
                 <a :href="doc.url" download class="text-blue-600">Descargar</a>
-              </div>
+                      </div>
             </li>
           </ul>
         </div>
       </div>
     </div>
   </MainLayout>
-  
-  <!-- Upload Modal -->
+    
+    <!-- Upload Modal -->
   <div v-if="showUploadModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-lg shadow max-w-md w-full p-6">
-      <h2 class="text-xl font-bold mb-4">Subir Documento</h2>
-      
-      <form @submit.prevent="uploadFile">
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Documento</label>
-            <select
-              v-model="uploadData.tipo"
-              required
+        <h2 class="text-xl font-bold mb-4">Subir Documento</h2>
+        
+        <form @submit.prevent="uploadFile">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Documento</label>
+              <select
+                v-model="uploadData.tipo"
+                required
               class="w-full px-4 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="" disabled>Selecciona un tipo</option>
+              >
+                <option value="" disabled>Selecciona un tipo</option>
               <option value="TE1">TE1 - Declaración</option>
               <option value="TE2">TE2 - Protocolo</option>
-              <option value="plano">Plano Eléctrico</option>
+                <option value="plano">Plano Eléctrico</option>
               <option value="informe">Informe Técnico</option>
               <option value="foto">Fotografía</option>
-              <option value="certificado">Certificado</option>
-            </select>
-          </div>
-          
-          <div>
+                <option value="certificado">Certificado</option>
+              </select>
+            </div>
+            
+            <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Documento</label>
-            <input
+              <input
               v-model="uploadData.nombre"
-              type="text"
+                type="text"
               required
               class="w-full px-4 py-2 border border-gray-300 rounded-md"
               placeholder="Nombre descriptivo"
-            />
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Archivo</label>
-            <input
-              ref="fileInput"
-              type="file"
+              />
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Archivo</label>
+                <input
+                  ref="fileInput"
+                  type="file"
               required
               class="w-full px-4 py-2 border border-gray-300 rounded-md"
               @change="handleFileChange"
@@ -167,19 +167,19 @@ const documents = computed(() => documentStore.currentProjectDocuments)
 
 const filteredDocuments = computed(() => {
   let filtered = [...documents.value]
-  
+
   // Filter by status
   if (filterStatus.value !== 'all') {
     filtered = filtered.filter(doc => doc.estado === filterStatus.value)
   }
-  
+
   // Filter by search query
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(doc => 
-      doc.nombre.toLowerCase().includes(query) ||
-      doc.tipo.toLowerCase().includes(query)
-    )
+        doc.nombre.toLowerCase().includes(query) ||
+        doc.tipo.toLowerCase().includes(query)
+      )
   }
   
   return filtered
@@ -261,10 +261,10 @@ const uploadFile = async () => {
     uploadError.value = 'Por favor, seleccione un archivo'
     return
   }
-  
+
   isUploading.value = true
   uploadError.value = ''
-  
+
   try {
     await uploadDocument(
       selectedProjectId.value,
@@ -333,7 +333,7 @@ onMounted(async () => {
     await loadDocumentsForProject()
   }
 })
-</script>
+</script> 
 
 <style scoped>
 .badge {

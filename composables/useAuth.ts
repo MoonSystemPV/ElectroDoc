@@ -49,67 +49,47 @@ export function useAuth() {
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
           console.log('Usuario autenticado en Firebase:', firebaseUser.email, 'UID:', firebaseUser.uid);
-          
-          // Primero intentamos buscar por UID (estándar)
+
           try {
             let userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-            
-            // Si no existe, buscar por cualquier documento que tenga el mismo email
+
             if (!userDoc.exists()) {
-              console.log('Buscando usuario por email en lugar de UID...');
-              const usersRef = collection(db, 'users');
-              const q = query(usersRef);
-              const querySnapshot = await getDocs(q);
-              
-              let foundUserDoc = null;
-              querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.email === firebaseUser.email) {
-                  console.log('¡Usuario encontrado por email! ID:', doc.id);
-                  foundUserDoc = { id: doc.id, ...data };
-                }
+              // Si no existe, crear el documento automáticamente
+              await setDoc(doc(db, 'users', firebaseUser.uid), {
+                nombre: firebaseUser.displayName || 'Usuario',
+                email: firebaseUser.email,
+                role: 'tecnico', // o el rol que quieras por defecto
+                fechaCreacion: new Date(),
+                activo: true
               });
-              
-              if (foundUserDoc) {
-                console.log('Usando documento encontrado por email:', foundUserDoc);
-                // Establecer usuario usando el documento encontrado
-                authStore.setUser({
-                  id: foundUserDoc.id,
-                  email: foundUserDoc.email,
-                  nombre: foundUserDoc.nombre || 'Usuario',
-                  role: foundUserDoc.role,
-                  fechaCreacion: foundUserDoc.fechaCreacion
-                });
-              } else {
-                console.warn('No se encontró el usuario ni por UID ni por email');
-                authStore.clearUser();
-              }
-            } else {
-              // Usuario existe en Firestore por UID, obtener datos completos
-              const userData = userDoc.data();
-              console.log('Datos del usuario encontrados por UID:', userData);
-              
-              authStore.setUser({
-                id: firebaseUser.uid,
-                email: firebaseUser.email || '',
-                nombre: userData.nombre || firebaseUser.displayName || 'Usuario',
-                role: userData.role || 'tecnico',
-                fechaCreacion: userData.fechaCreacion || new Date()
-              });
+              userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+              console.log('Documento de usuario creado automáticamente en initAuth');
             }
+
+            const userData = userDoc.data() || {};
+            authStore.setUser({
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              nombre: userData.nombre || firebaseUser.displayName || 'Usuario',
+              role: userData.role || 'tecnico',
+              fechaCreacion: userData.fechaCreacion || new Date()
+            });
+            authStore.setInitialized(true);
           } catch (err) {
-            console.error('Error al obtener datos de usuario de Firestore:', err);
+            console.error('Error al obtener/crear datos de usuario de Firestore:', err);
             authStore.clearUser();
+            authStore.setInitialized(true);
           }
         } else {
           // No hay usuario autenticado
           console.log('No hay usuario autenticado en Firebase');
           authStore.clearUser();
+          authStore.setInitialized(true);
         }
-        
+
         isLoading.value = false;
       });
-      
+
       // Limpiar el listener al desmontar
       if (process.client) {
         // Devolver función para desuscribirse (útil para onUnmounted)
@@ -182,70 +162,36 @@ export function useAuth() {
   }
   
   /**
-   * Crea un nuevo usuario por el administrador
+   * Crea un nuevo usuario por el administrador usando el backend
    */
   const createUser = async (userData: {nombre: string; email: string; role: string; password: string}) => {
     if (!isAdmin.value) {
       error.value = 'Solo los administradores pueden crear usuarios';
       return false;
     }
-    
+
     isLoading.value = true;
     error.value = null;
-    
+
     try {
-      // Guardar el usuario actual antes de crear uno nuevo
-      const currentUser = auth.currentUser;
-      
-      // Crear usuario en Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        userData.email, 
-        userData.password
-      );
-      
-      const newUser = userCredential.user;
-      
-      // Guardar datos adicionales en Firestore
-      await setDoc(doc(db, 'users', newUser.uid), {
-        nombre: userData.nombre,
-        email: userData.email,
-        role: userData.role,
-        fechaCreacion: new Date(),
-        createdBy: authStore.user?.id || 'sistema',
-        activo: true
+      // Llama a tu backend en vez de usar createUserWithEmailAndPassword
+      const response = await fetch('http://localhost:4000/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
       });
-      
-      console.log('Usuario creado exitosamente:', newUser.uid);
-      
-      // Importante: volver a iniciar sesión con el usuario administrador
-      // para evitar quedarse con la sesión del usuario recién creado
-      if (currentUser) {
-        // Esto requiere conocer la contraseña del admin, así que en lugar de eso,
-        // simplemente cerramos sesión y dejamos que el admin vuelva a iniciar sesión
-        await signOut(auth);
-        
-        // Forzar recarga para asegurar que se cierre la sesión correctamente
-        if (process.client) {
-          window.location.reload();
-        }
-      }
-      
-      return true;
-    } catch (err: any) {
-      console.error('Error al crear usuario:', err);
-      
-      // Manejar errores específicos de Firebase
-      if (err.code === 'auth/email-already-in-use') {
-        error.value = 'El correo electrónico ya está en uso';
-      } else if (err.code === 'auth/invalid-email') {
-        error.value = 'Correo electrónico inválido';
-      } else if (err.code === 'auth/weak-password') {
-        error.value = 'La contraseña es demasiado débil';
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('Usuario creado exitosamente:', data.uid);
+        return true;
       } else {
-        error.value = 'Error al crear usuario';
+        error.value = data.error || 'Error al crear usuario';
+        return false;
       }
-      
+    } catch (err) {
+      console.error('Error al crear usuario:', err);
+      error.value = 'Error al crear usuario';
       return false;
     } finally {
       isLoading.value = false;
@@ -258,7 +204,7 @@ export function useAuth() {
   const getAllUsers = async () => {
     if (!isAdmin.value) {
       error.value = 'Solo los administradores pueden listar usuarios';
-      return [];
+      return [] as User[];
     }
     
     isLoading.value = true;
@@ -268,14 +214,14 @@ export function useAuth() {
       const usersSnapshot = await getDocs(collection(db, 'users'));
       const users: User[] = [];
       
-      usersSnapshot.forEach((doc) => {
-        const userData = doc.data();
+      usersSnapshot.forEach((docSnap) => {
+        const userData = docSnap.data();
         users.push({
-          id: doc.id,
+          id: docSnap.id,
           email: userData.email,
           nombre: userData.nombre,
           role: userData.role,
-          fechaCreacion: userData.fechaCreacion?.toDate() || new Date()
+          fechaCreacion: userData.fechaCreacion?.toDate ? userData.fechaCreacion.toDate() : new Date(userData.fechaCreacion)
         });
       });
       
@@ -283,7 +229,7 @@ export function useAuth() {
     } catch (err) {
       console.error('Error al obtener usuarios:', err);
       error.value = 'Error al obtener la lista de usuarios';
-      return [];
+      return [] as User[];
     } finally {
       isLoading.value = false;
     }

@@ -10,8 +10,11 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "date-fns": "^2.30.0",
+    "express": "^5.1.0",
     "firebase": "^10.14.1",
+    "firebase-admin": "^13.4.0",
     "lodash": "^4.17.21",
     "nuxt": "^3.9.0",
     "pinia": "^2.1.7",
@@ -25,5 +28,19 @@
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6"
-  }
+  },
+  "version": "1.0.0",
+  "description": "[![Vue.js](https://img.shields.io/badge/Vue.js-3.x-42b883.svg)](https://vuejs.org/)\r [![Nuxt](https://img.shields.io/badge/Nuxt-3.x-00DC82.svg)](https://nuxtjs.org/)\r [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.x-38b2ac.svg)](https://tailwindcss.com/)\r [![Estado](https://img.shields.io/badge/Estado-Desarrollo-yellow.svg)]()",
+  "main": "tailwind.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MoonSystemPV/ElectroDoc.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MoonSystemPV/ElectroDoc/issues"
+  },
+  "homepage": "https://github.com/MoonSystemPV/ElectroDoc#readme"
 }

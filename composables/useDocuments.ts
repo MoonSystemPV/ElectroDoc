@@ -498,7 +498,7 @@ export function useDocuments() {
       isLoading.value = false;
     }
   }
-
+  
   return {
     documents,
     isLoading,
