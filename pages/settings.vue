@@ -304,6 +304,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
 import MainLayout from '~/components/layout/MainLayout.vue'
 
 definePageMeta({
@@ -311,6 +312,7 @@ definePageMeta({
 })
 
 const { user } = useAuth()
+const { showToast } = useToast()
 
 // Estado local
 const activeTab = ref('profile')
@@ -370,17 +372,16 @@ const getRoleName = (role) => {
 
 // Guardar perfil
 const saveProfile = () => {
-  alert('Perfil guardado correctamente')
+  showToast('Perfil guardado correctamente', 'success')
 }
 
 // Cambiar contraseña
 const changePassword = () => {
   if (security.newPassword !== security.confirmPassword) {
-    alert('Las contraseñas no coinciden')
+    showToast('Las contraseñas no coinciden', 'error')
     return
   }
-  
-  alert('Contraseña cambiada correctamente')
+  showToast('Contraseña cambiada correctamente', 'success')
   security.currentPassword = ''
   security.newPassword = ''
   security.confirmPassword = ''
@@ -388,12 +389,12 @@ const changePassword = () => {
 
 // Guardar preferencias de notificaciones
 const saveNotifications = () => {
-  alert('Preferencias de notificaciones guardadas')
+  showToast('Preferencias de notificaciones guardadas', 'success')
 }
 
 // Guardar preferencias de apariencia
 const saveAppearance = () => {
-  alert('Preferencias de apariencia guardadas')
+  showToast('Preferencias de apariencia guardadas', 'success')
 }
 
 // Cargar datos del usuario al montar

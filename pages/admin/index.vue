@@ -325,6 +325,7 @@
 import { ref, onMounted } from 'vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useToast } from '~/composables/useToast'
 
 definePageMeta({
   middleware: 'auth'
@@ -334,6 +335,7 @@ definePageMeta({
 const { getAllUsers, createUser: apiCreateUser, updateUser: apiUpdateUser, 
         activateUser: apiActivateUser, deactivateUser: apiDeactivateUser, 
         resetPassword: apiResetPassword, error: usersError, isLoading } = useUsers()
+const { showToast } = useToast()
 
 // State
 const users = ref<any[]>([])
@@ -473,53 +475,49 @@ const updateUser = async () => {
 const activateUser = async (userId: string) => {
   try {
     const success = await apiActivateUser(userId)
-    
     if (success) {
-      // Update user in list
       const index = users.value.findIndex(u => u.id === userId)
       if (index !== -1) {
         users.value[index].activo = true
       }
+      showToast('Usuario activado correctamente', 'success')
     }
   } catch (err) {
     console.error('Error activating user:', err)
-    alert('Error al activar el usuario')
+    showToast('Error al activar el usuario', 'error')
   }
 }
 
 const deactivateUser = async (userId: string) => {
   try {
     const success = await apiDeactivateUser(userId)
-    
     if (success) {
-      // Update user in list
       const index = users.value.findIndex(u => u.id === userId)
       if (index !== -1) {
         users.value[index].activo = false
       }
+      showToast('Usuario desactivado correctamente', 'success')
     }
   } catch (err) {
     console.error('Error deactivating user:', err)
-    alert('Error al desactivar el usuario')
+    showToast('Error al desactivar el usuario', 'error')
   }
 }
 
 const resetUserPassword = async (userId: string) => {
-  if (!confirm('¿Está seguro de restablecer la contraseña de este usuario? Se enviará un enlace de restablecimiento a su correo electrónico.')) {
+  if (!window.confirm('¿Está seguro de restablecer la contraseña de este usuario? Se enviará un enlace de restablecimiento a su correo electrónico.')) {
     return
   }
-  
   try {
     const success = await apiResetPassword(userId)
-    
     if (success) {
-      alert('Se ha enviado un enlace de restablecimiento de contraseña al correo electrónico del usuario')
+      showToast('Se ha enviado un enlace de restablecimiento de contraseña al correo electrónico del usuario', 'success')
     } else {
-      alert('Error al restablecer la contraseña')
+      showToast('Error al restablecer la contraseña', 'error')
     }
   } catch (err) {
     console.error('Error resetting password:', err)
-    alert('Error al restablecer la contraseña')
+    showToast('Error al restablecer la contraseña', 'error')
   }
 }
 

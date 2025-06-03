@@ -298,6 +298,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
 import MainLayout from '~/components/layout/MainLayout.vue'
 
 definePageMeta({
@@ -305,6 +306,7 @@ definePageMeta({
 })
 
 const { user, createUser, changePassword, getAllUsers, deleteUser, isLoading: authLoading, error: authError } = useAuth()
+const { showToast } = useToast()
 
 // Estado
 const users = ref([])
@@ -382,11 +384,7 @@ async function addUser() {
     
     if (success) {
       showAddUserModal.value = false
-      
-      // Mostrar mensaje de éxito
-      alert(`Usuario ${newUser.value.nombre} creado correctamente. Se ha cerrado la sesión para aplicar los cambios.`)
-      
-      // Reiniciar el formulario
+      showToast(`Usuario ${newUser.value.nombre} creado correctamente.`, 'success')
       newUser.value = {
         nombre: '',
         email: '',
@@ -425,7 +423,7 @@ async function handlePasswordChange() {
       newPassword.value = ''
       
       // Mostrar mensaje de éxito
-      alert('Contraseña cambiada correctamente')
+      showToast('Contraseña cambiada correctamente', 'success')
     } else {
       error.value = authError.value
     }
@@ -453,13 +451,8 @@ async function handleDeleteUser() {
     
     if (success) {
       showDeleteModal.value = false
-      
-      // Mostrar mensaje de éxito
-      alert(`Usuario ${selectedUser.value.nombre} eliminado correctamente de Firestore.`)
-      
-      // Eliminar usuario de la lista local
+      showToast(`Usuario ${selectedUser.value.nombre} eliminado correctamente.`, 'error')
       users.value = users.value.filter(u => u.id !== selectedUser.value.id)
-      
       selectedUser.value = null
     } else {
       error.value = authError.value
