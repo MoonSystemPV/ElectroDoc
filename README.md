@@ -49,7 +49,7 @@ El sistema incluye gestión de usuarios con diferentes roles (administrador, sup
 
 ## 🛠️ Requisitos Previos
 
-- [Node.js](https://nodejs.org/) (v16.x o superior)
+- [Node.js](https://nodejs.org/) (v16.x o superior).
 - [npm](https://www.npmjs.com/) (v8.x o superior)
 - [Git](https://git-scm.com/)
 
