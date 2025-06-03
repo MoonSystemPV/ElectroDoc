@@ -45,6 +45,25 @@ app.post('/create-user', async (req, res) => {
   }
 });
 
+// Endpoint para eliminar usuario completamente
+app.post('/delete-user', async (req, res) => {
+  const { uid } = req.body;
+  if (!uid) {
+    return res.status(400).json({ success: false, error: 'Falta el UID' });
+  }
+  try {
+    // 1. Eliminar de Authentication
+    await admin.auth().deleteUser(uid);
+
+    // 2. Eliminar de Firestore
+    await admin.firestore().collection('users').doc(uid).delete();
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Admin service running on port ${PORT}`);

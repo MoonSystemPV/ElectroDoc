@@ -289,7 +289,7 @@ export function useAuth() {
   }
   
   /**
-   * Eliminar usuario
+   * Eliminar usuario completamente (Auth + Firestore)
    */
   const deleteUser = async (userId: string) => {
     if (!isAdmin.value) {
@@ -301,26 +301,21 @@ export function useAuth() {
     error.value = null;
     
     try {
-      // 1. Primero eliminar el documento de usuario en Firestore
-      await deleteDoc(doc(db, 'users', userId));
-      console.log('Documento de usuario eliminado:', userId);
-      
-      // 2. También podríamos desactivar el usuario marcándolo como inactivo
-      // esto es útil si quieres mantener un registro pero impedir el acceso
-      /*
-      await updateDoc(doc(db, 'users', userId), {
-        activo: false,
-        fechaEliminacion: new Date(),
-        eliminadoPor: authStore.user?.id || 'sistema'
+      // Llama al backend para eliminar de Auth y Firestore
+      const response = await fetch('http://localhost:4000/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: userId })
       });
-      console.log('Usuario marcado como inactivo:', userId);
-      */
-      
-      // Nota: Eliminar un usuario de Authentication requiere Firebase Admin SDK 
-      // o Cloud Functions. No es posible hacerlo directamente desde el cliente.
-      console.warn('La eliminación de la cuenta de autenticación requiere Firebase Admin SDK.');
-      
-      return true;
+      const data = await response.json();
+
+      if (data.success) {
+        console.log('Usuario eliminado completamente:', userId);
+        return true;
+      } else {
+        error.value = data.error || 'Error al eliminar usuario';
+        return false;
+      }
     } catch (err) {
       console.error('Error al eliminar usuario:', err);
       error.value = 'Error al eliminar usuario';
