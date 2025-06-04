@@ -1,28 +1,11 @@
 <template>
   <MainLayout>
-    <div class="p-6">
-      <h1 class="text-2xl font-bold mb-4">Proyectos</h1>
-      
-      <div class="bg-white p-6 rounded-lg shadow">
-        <div v-if="isLoading" class="text-center p-4">
-          <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-          <p class="mt-2">Cargando proyectos...</p>
-        </div>
-        
-        <div v-else-if="projects.length === 0" class="text-center p-8">
-          <p class="text-lg text-gray-500">No hay proyectos disponibles</p>
-          <button @click="loadProjects" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded">
-            Recargar
-          </button>
-        </div>
-        
-        <div v-else>
-          <ul class="space-y-2">
-            <li v-for="project in projects" :key="project.id" class="border p-4 rounded hover:bg-gray-50">
-              <div class="font-medium">{{ project.nombre }}</div>
-              <div class="text-sm text-gray-500">Cliente: {{ project.cliente }}</div>
-            </li>
-          </ul>
+    <div class="p-2 md:p-0">
+      <h1 class="text-3xl font-extrabold mb-8 text-pink-500 dark:text-pink-400 tracking-tight">Proyectos</h1>
+      <div class="flex flex-col gap-6">
+        <div v-for="project in projects" :key="project.id" class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl p-7 transition-colors hover:shadow-2xl hover:-translate-y-1 transform duration-200 cursor-pointer">
+          <h2 class="text-xl font-bold text-zinc-800 dark:text-zinc-100 mb-1">{{ project.nombre }}</h2>
+          <p class="text-zinc-400 text-sm">Cliente: {{ project.cliente }}</p>
         </div>
       </div>
     </div>

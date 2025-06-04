@@ -1,109 +1,186 @@
 <template>
   <MainLayout>
-    <div class="p-6">
-      <h1 class="text-2xl font-bold mb-4">Documentos</h1>
-      
-      <!-- Filters and Actions -->
-      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0 mb-6">
-        <div class="flex items-center space-x-4">
-          <div class="relative">
-            <input type="text" 
-              class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10" 
-              placeholder="Buscar documentos..." 
-              v-model="searchQuery" />
-            <span class="material-icons absolute right-3 top-2 text-gray-400">search</span>
-          </div>
-          <div>
-            <select 
-              class="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-              v-model="filterProject"
-            >
-              <option value="">Todos los proyectos</option>
-              <option value="proyecto1">Proyecto Subestación Central</option>
-              <option value="proyecto2">Línea 220kV</option>
-              <option value="proyecto3">Subestación Norte</option>
-            </select>
-          </div>
+    <div class="p-2 md:p-0">
+      <h1 class="text-3xl font-extrabold mb-8 text-pink-500 dark:text-pink-400 tracking-tight">Documentos</h1>
+      <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl p-8 transition-colors">
+        <div class="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+          <input v-model="searchQuery" type="text" placeholder="Buscar documentos..." class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-72" />
+          <select v-model="filterProject" class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-60">
+            <option value="">Todos los proyectos</option>
+            <option value="proyecto1">Proyecto Subestación Central</option>
+            <option value="proyecto2">Línea 220kV</option>
+            <option value="proyecto3">Subestación Norte</option>
+          </select>
+          <button @click="showAddDocumentModal = true" class="ml-auto flex items-center gap-2 bg-pink-500 hover:bg-pink-400 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
+            <span class="material-icons">add</span> Nuevo Documento
+          </button>
         </div>
-        <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center">
-          <span class="material-icons mr-1">add</span>
-          Nuevo Documento
-        </button>
-      </div>
 
-      <!-- Documents List -->
-      <div class="bg-white shadow rounded-lg overflow-hidden">
-        <ul class="divide-y divide-gray-200">
-          <li v-for="doc in filteredDocuments" :key="doc.id">
-            <div class="px-4 py-4 sm:px-6 hover:bg-gray-50 cursor-pointer">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0 mr-4">
-                    <span class="material-icons" 
-                        :class="{ 
-                          'text-blue-500': doc.type === 'pdf', 
-                          'text-green-500': doc.type === 'excel',
-                          'text-yellow-500': doc.type === 'word'
-                        }">
+        <div v-if="isLoading" class="text-center p-8">
+          <div class="animate-spin h-10 w-10 border-4 border-pink-500 border-t-transparent rounded-full mx-auto"></div>
+          <p class="mt-2 text-zinc-600 dark:text-zinc-400">Cargando documentos...</p>
+        </div>
+
+        <div v-else-if="filteredDocuments.length === 0" class="text-center p-8">
+          <p class="text-lg text-zinc-500 dark:text-zinc-400">No se encontraron documentos</p>
+        </div>
+
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+            <thead>
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Documento</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Proyecto</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Última Actualización</th>
+                <th class="px-6 py-3"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tr v-for="doc in filteredDocuments" :key="doc.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-700 transition">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center gap-3">
+                    <span class="material-icons text-xl"
+                      :class="{
+                        'text-blue-500': doc.type === 'pdf',
+                        'text-green-500': doc.type === 'excel',
+                        'text-yellow-500': doc.type === 'word'
+                      }">
                       {{ getDocumentIcon(doc.type) }}
                     </span>
+                    <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ doc.name }}</span>
                   </div>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">{{ doc.name }}</p>
-                    <p class="text-sm text-gray-500">
-                      {{ doc.project }} • Actualizado {{ formatDate(doc.updatedAt) }}
-                    </p>
-                  </div>
-                </div>
-                <div class="flex space-x-2">
-                  <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium" 
-                      :class="{
-                        'bg-green-100 text-green-800': doc.status === 'approved',
-                        'bg-yellow-100 text-yellow-800': doc.status === 'pending',
-                        'bg-red-100 text-red-800': doc.status === 'rejected',
-                        'bg-blue-100 text-blue-800': doc.status === 'draft'
-                      }">
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-zinc-700 dark:text-zinc-100">{{ doc.project }}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+                    :class="{
+                      'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': doc.status === 'approved',
+                      'bg-yellow-100 dark:bg-yellow-500 text-yellow-700 dark:text-white': doc.status === 'pending',
+                      'bg-red-100 dark:bg-red-500 text-red-700 dark:text-white': doc.status === 'rejected',
+                      'bg-blue-100 dark:bg-blue-500 text-blue-700 dark:text-white': doc.status === 'draft'
+                    }">
                     {{ getStatusText(doc.status) }}
                   </span>
-                  <div class="flex space-x-1">
-                    <button class="p-1 rounded-full hover:bg-gray-100">
-                      <span class="material-icons text-gray-500 text-sm">edit</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-300">{{ formatDate(doc.updatedAt) }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div class="flex justify-end gap-2">
+                    <button @click="editDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                      <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">edit</span>
                     </button>
-                    <button class="p-1 rounded-full hover:bg-gray-100">
-                      <span class="material-icons text-gray-500 text-sm">download</span>
+                    <button @click="downloadDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                      <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">download</span>
                     </button>
-                    <button class="p-1 rounded-full hover:bg-gray-100">
-                      <span class="material-icons text-gray-500 text-sm">more_vert</span>
+                    <button @click="showDocumentOptions(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                      <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">more_vert</span>
                     </button>
                   </div>
-                </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="flex items-center justify-between border-t border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 sm:px-6 mt-4 rounded-xl">
+          <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm text-zinc-700 dark:text-zinc-300">
+                Mostrando <span class="font-medium">1</span> a <span class="font-medium">10</span> de <span class="font-medium">24</span> resultados
+              </p>
+            </div>
+            <div>
+              <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                <a href="#" class="relative inline-flex items-center rounded-l-md px-2 py-2 text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                  <span class="material-icons text-sm">chevron_left</span>
+                </a>
+                <a href="#" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-pink-600 dark:text-pink-400 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700">1</a>
+                <a href="#" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700">2</a>
+                <a href="#" class="relative hidden items-center px-4 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 md:inline-flex">3</a>
+                <a href="#" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                  <span class="material-icons text-sm">chevron_right</span>
+                </a>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal de Nuevo Documento -->
+      <div v-if="showAddDocumentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl max-w-md w-full p-6">
+          <h2 class="text-xl font-bold mb-4 text-zinc-900 dark:text-zinc-100">Nuevo Documento</h2>
+          
+          <div v-if="error" class="bg-red-50 dark:bg-red-900/50 border-l-4 border-red-400 p-4 mb-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <span class="material-icons text-red-400">error</span>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
               </div>
             </div>
-          </li>
-        </ul>
-      </div>
-      
-      <!-- Pagination -->
-      <div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4 rounded-md">
-        <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-          <div>
-            <p class="text-sm text-gray-700">
-              Mostrando <span class="font-medium">1</span> a <span class="font-medium">10</span> de <span class="font-medium">24</span> resultados
-            </p>
           </div>
-          <div>
-            <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-              <a href="#" class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-                <span class="material-icons text-sm">chevron_left</span>
-              </a>
-              <a href="#" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-blue-600 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">1</a>
-              <a href="#" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">2</a>
-              <a href="#" class="relative hidden items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 md:inline-flex">3</a>
-              <a href="#" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-                <span class="material-icons text-sm">chevron_right</span>
-              </a>
-            </nav>
-          </div>
+          
+          <form @submit.prevent="addDocument">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nombre del Documento</label>
+                <input 
+                  v-model="newDocument.name" 
+                  type="text" 
+                  required 
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
+                  placeholder="Nombre del documento"
+                />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Proyecto</label>
+                <select 
+                  v-model="newDocument.project" 
+                  required 
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
+                >
+                  <option value="proyecto1">Proyecto Subestación Central</option>
+                  <option value="proyecto2">Línea 220kV</option>
+                  <option value="proyecto3">Subestación Norte</option>
+                </select>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo de Documento</label>
+                <select 
+                  v-model="newDocument.type" 
+                  required 
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
+                >
+                  <option value="pdf">PDF</option>
+                  <option value="excel">Excel</option>
+                  <option value="word">Word</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="mt-6 flex justify-end space-x-3">
+              <button 
+                type="button" 
+                @click="showAddDocumentModal = false" 
+                class="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                class="px-4 py-2 bg-pink-500 hover:bg-pink-400 text-white rounded-lg transition"
+                :disabled="isLoading"
+              >
+                <span v-if="isLoading" class="material-icons animate-spin mr-1 text-sm">autorenew</span>
+                Crear Documento
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -118,6 +195,18 @@ import MainLayout from '~/components/layout/MainLayout.vue'
 
 definePageMeta({
   middleware: ['auth']
+})
+
+// Estado
+const isLoading = ref(false)
+const error = ref(null)
+const searchQuery = ref('')
+const filterProject = ref('')
+const showAddDocumentModal = ref(false)
+const newDocument = ref({
+  name: '',
+  project: '',
+  type: 'pdf'
 })
 
 // Sample data
@@ -163,10 +252,6 @@ const documents = ref([
     status: 'rejected'
   }
 ])
-
-// Reactive state
-const searchQuery = ref('')
-const filterProject = ref('')
 
 // Computed properties
 const filteredDocuments = computed(() => {
@@ -214,5 +299,56 @@ function getStatusText(status) {
 
 function formatDate(date) {
   return format(date, "d 'de' MMMM, yyyy", { locale: es })
+}
+
+// Funciones de negocio
+async function addDocument() {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    // Aquí iría la lógica para crear el documento
+    const projectMap = {
+      'proyecto1': 'Subestación Central',
+      'proyecto2': 'Línea 220kV',
+      'proyecto3': 'Subestación Norte'
+    }
+    
+    const newDoc = {
+      id: documents.value.length + 1,
+      name: newDocument.value.name,
+      type: newDocument.value.type,
+      project: projectMap[newDocument.value.project],
+      updatedAt: new Date(),
+      status: 'draft'
+    }
+    
+    documents.value.push(newDoc)
+    showAddDocumentModal.value = false
+    newDocument.value = {
+      name: '',
+      project: '',
+      type: 'pdf'
+    }
+  } catch (err) {
+    error.value = 'Error al crear el documento'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function editDocument(doc) {
+  // Implementar lógica de edición
+  console.log('Editar documento:', doc)
+}
+
+function downloadDocument(doc) {
+  // Implementar lógica de descarga
+  console.log('Descargar documento:', doc)
+}
+
+function showDocumentOptions(doc) {
+  // Implementar lógica de opciones
+  console.log('Mostrar opciones del documento:', doc)
 }
 </script> 
