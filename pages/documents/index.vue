@@ -1,350 +1,354 @@
 <template>
   <MainLayout>
-    <div class="p-6">
-      <h1 class="text-2xl font-bold mb-4">Documentos</h1>
-      
-      <div class="bg-white p-6 rounded-lg shadow">
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Proyecto</label>
-            <select
-            v-model="selectedProjectId"
-            @change="loadDocumentsForProject"
-            class="w-full max-w-md px-4 py-2 border border-gray-300 rounded-md"
-          >
-            <option value="">Seleccione un proyecto</option>
-            <option v-for="project in projects" :key="project.id" :value="project.id">
-              {{ project.nombre }}
-            </option>
+    <div class="p-2 md:p-0">
+      <h1 class="text-3xl font-extrabold mb-8 text-blue-500 dark:text-white tracking-tight">Documentos</h1>
+      <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl p-8 transition-colors">
+        <div class="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+          <input v-model="searchQuery" type="text" placeholder="Buscar documentos..." class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition w-full md:w-72" />
+          <select v-model="filterProject" class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition w-full md:w-60">
+            <option value="">Todos los proyectos</option>
+            <option value="proyecto1">Proyecto Subestación Central</option>
+            <option value="proyecto2">Línea 220kV</option>
+            <option value="proyecto3">Subestación Norte</option>
             </select>
-      </div>
-      
-        <div v-if="selectedProjectId" class="mb-4">
-          <button @click="showUploadModal = true" class="px-4 py-2 bg-blue-600 text-white rounded">
-          Subir Documento
+          <button @click="showAddDocumentModal = true" class="ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
+            <span class="material-icons">add</span> Nuevo Documento
         </button>
       </div>
       
-        <div v-if="isLoading" class="text-center p-4">
-          <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-          <p class="mt-2">Cargando documentos...</p>
+        <div v-if="isLoading" class="text-center p-8">
+          <div class="animate-spin h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+          <p class="mt-2 text-zinc-600 dark:text-zinc-400">Cargando documentos...</p>
         </div>
         
-        <div v-else-if="!selectedProjectId" class="text-center p-8">
-          <p class="text-lg text-gray-500">Seleccione un proyecto para ver sus documentos</p>
+        <div v-else-if="filteredDocuments.length === 0" class="text-center p-8">
+          <p class="text-lg text-zinc-500 dark:text-zinc-400">No se encontraron documentos</p>
         </div>
         
-        <div v-else-if="documents.length === 0" class="text-center p-8">
-          <p class="text-lg text-gray-500">No hay documentos disponibles</p>
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+            <thead>
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Documento</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Proyecto</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Última Actualización</th>
+                <th class="px-6 py-3"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tr v-for="doc in filteredDocuments" :key="doc.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-700 transition">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center gap-3">
+                    <span class="material-icons text-xl"
+                      :class="{
+                        'text-blue-500': doc.type === 'pdf',
+                        'text-green-500': doc.type === 'excel',
+                        'text-yellow-500': doc.type === 'word'
+                      }">
+                      {{ getDocumentIcon(doc.type) }}
+                    </span>
+                    <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ doc.name }}</span>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-zinc-700 dark:text-zinc-100">{{ doc.project }}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+                    :class="{
+                      'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': doc.status === 'approved',
+                      'bg-yellow-100 dark:bg-yellow-500 text-yellow-700 dark:text-white': doc.status === 'pending',
+                      'bg-red-100 dark:bg-red-500 text-red-700 dark:text-white': doc.status === 'rejected',
+                      'bg-blue-100 dark:bg-blue-500 text-blue-700 dark:text-white': doc.status === 'draft'
+                    }">
+                    {{ getStatusText(doc.status) }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-300">{{ formatDate(doc.updatedAt) }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div class="flex justify-end gap-2">
+                    <button @click="editDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                      <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">edit</span>
+                    </button>
+                    <button @click="downloadDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                      <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">download</span>
+                    </button>
+                    <button @click="showDocumentOptions(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                      <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">more_vert</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
         
-        <div v-else>
-          <ul class="space-y-2">
-            <li v-for="doc in documents" :key="doc.id" class="border p-4 rounded hover:bg-gray-50">
-              <div class="font-medium">{{ doc.nombre }}</div>
-              <div class="text-sm text-gray-500">Tipo: {{ doc.tipo }}</div>
-              <div class="flex mt-2">
-                <a :href="doc.url" target="_blank" class="text-blue-600 mr-3">Ver</a>
-                <a :href="doc.url" download class="text-blue-600">Descargar</a>
+        <!-- Paginación -->
+        <div class="flex items-center justify-between border-t border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 sm:px-6 mt-4 rounded-xl">
+          <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm text-zinc-700 dark:text-zinc-300">
+                Mostrando <span class="font-medium">1</span> a <span class="font-medium">10</span> de <span class="font-medium">24</span> resultados
+              </p>
+            </div>
+            <div>
+              <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                <a href="#" class="relative inline-flex items-center rounded-l-md px-2 py-2 text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                  <span class="material-icons text-sm">chevron_left</span>
+                </a>
+                <a href="#" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700">1</a>
+                <a href="#" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700">2</a>
+                <a href="#" class="relative hidden items-center px-4 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 md:inline-flex">3</a>
+                <a href="#" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-zinc-400 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+                  <span class="material-icons text-sm">chevron_right</span>
+                </a>
+              </nav>
+            </div>
                       </div>
-            </li>
-          </ul>
         </div>
       </div>
-    </div>
-  </MainLayout>
-    
-    <!-- Upload Modal -->
-  <div v-if="showUploadModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-lg shadow max-w-md w-full p-6">
-        <h2 class="text-xl font-bold mb-4">Subir Documento</h2>
-        
-        <form @submit.prevent="uploadFile">
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Documento</label>
-              <select
-                v-model="uploadData.tipo"
-                required
-              class="w-full px-4 py-2 border border-gray-300 rounded-md"
-              >
-                <option value="" disabled>Selecciona un tipo</option>
-              <option value="TE1">TE1 - Declaración</option>
-              <option value="TE2">TE2 - Protocolo</option>
-                <option value="plano">Plano Eléctrico</option>
-              <option value="informe">Informe Técnico</option>
-              <option value="foto">Fotografía</option>
-                <option value="certificado">Certificado</option>
-              </select>
+
+      <!-- Modal de Nuevo Documento -->
+      <div v-if="showAddDocumentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl max-w-md w-full p-6">
+          <h2 class="text-xl font-bold mb-4 text-zinc-900 dark:text-zinc-100">Nuevo Documento</h2>
+          
+          <div v-if="error" class="bg-red-50 dark:bg-red-900/50 border-l-4 border-red-400 p-4 mb-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <span class="material-icons text-red-400">error</span>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
+              </div>
+            </div>
             </div>
             
+          <form @submit.prevent="addDocument">
+            <div class="space-y-4">
             <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Documento</label>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nombre del Documento</label>
               <input
-              v-model="uploadData.nombre"
+                  v-model="newDocument.name" 
                 type="text"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-md"
-              placeholder="Nombre descriptivo"
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition"
+                  placeholder="Nombre del documento"
               />
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Archivo</label>
-                <input
-                  ref="fileInput"
-                  type="file"
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Proyecto</label>
+                <select 
+                  v-model="newDocument.project" 
+                  required 
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition"
+                >
+                  <option value="proyecto1">Proyecto Subestación Central</option>
+                  <option value="proyecto2">Línea 220kV</option>
+                  <option value="proyecto3">Subestación Norte</option>
+                </select>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo de Documento</label>
+                <select 
+                  v-model="newDocument.type" 
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-md"
-              @change="handleFileChange"
-            />
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition"
+                >
+                  <option value="pdf">PDF</option>
+                  <option value="excel">Excel</option>
+                  <option value="word">Word</option>
+                </select>
           </div>
         </div>
         
         <div class="mt-6 flex justify-end space-x-3">
           <button
             type="button"
-            @click="showUploadModal = false"
-            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700"
+                @click="showAddDocumentModal = false" 
+                class="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md"
-            :disabled="isUploading"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition"
+                :disabled="isLoading"
           >
-            {{ isUploading ? 'Subiendo...' : 'Subir Documento' }}
+                <span v-if="isLoading" class="material-icons animate-spin mr-1 text-sm">autorenew</span>
+                Crear Documento
           </button>
         </div>
       </form>
     </div>
   </div>
+    </div>
+  </MainLayout>
 </template>
 
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+<script setup>
+import { ref, computed } from 'vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { useAuth } from '~/composables/useAuth'
-import { useProjects } from '~/composables/useProjects'
-import { useDocuments } from '~/composables/useDocuments'
-import { useProjectStore } from '~/stores/projects'
-import { useDocumentStore } from '~/stores/documents'
-import { useRoute, useRouter } from 'vue-router'
-import DocumentUploadForm from '~/components/DocumentUploadForm.vue'
 import MainLayout from '~/components/layout/MainLayout.vue'
 
 definePageMeta({
-  middleware: 'auth'
+  middleware: ['auth']
 })
 
-// Composables
-const { user } = useAuth()
-const projectStore = useProjectStore()
-const documentStore = useDocumentStore()
-const { getProjects, loadDemoProjects } = useProjects()
-const { getProjectDocuments, uploadDocument, validateDocument: validateDoc, rejectDocument: rejectDoc, isLoading } = useDocuments()
-
-// Estado local
+// Estado
+const isLoading = ref(false)
+const error = ref(null)
 const searchQuery = ref('')
-const filterStatus = ref('all')
-const selectedProjectId = ref('')
-const showUploadModal = ref(false)
-const uploadError = ref('')
-const isUploading = ref(false)
-const fileInput = ref(null)
-
-const uploadData = ref({
-  projectId: '',
-  tipo: '',
-  nombre: '',
-  file: null
+const filterProject = ref('')
+const showAddDocumentModal = ref(false)
+const newDocument = ref({
+  name: '',
+  project: '',
+  type: 'pdf'
 })
+
+// Sample data
+const documents = ref([
+  {
+    id: 1,
+    name: 'Especificaciones técnicas.pdf',
+    type: 'pdf',
+    project: 'Subestación Central',
+    updatedAt: new Date(2023, 10, 15),
+    status: 'approved'
+  },
+  {
+    id: 2,
+    name: 'Presupuesto final.xlsx',
+    type: 'excel',
+    project: 'Línea 220kV',
+    updatedAt: new Date(2023, 11, 1),
+    status: 'pending'
+  },
+  {
+    id: 3,
+    name: 'Planos eléctricos.pdf',
+    type: 'pdf',
+    project: 'Subestación Norte',
+    updatedAt: new Date(2023, 11, 5),
+    status: 'draft'
+  },
+  {
+    id: 4,
+    name: 'Informe de avance.docx',
+    type: 'word',
+    project: 'Línea 220kV',
+    updatedAt: new Date(2023, 10, 28),
+    status: 'approved'
+  },
+  {
+    id: 5,
+    name: 'Memoria de cálculo.pdf',
+    type: 'pdf',
+    project: 'Subestación Central',
+    updatedAt: new Date(2023, 11, 3),
+    status: 'rejected'
+  }
+])
 
 // Computed properties
-const projects = computed(() => projectStore.projects)
-const documents = computed(() => documentStore.currentProjectDocuments)
-
 const filteredDocuments = computed(() => {
-  let filtered = [...documents.value]
-
-  // Filter by status
-  if (filterStatus.value !== 'all') {
-    filtered = filtered.filter(doc => doc.estado === filterStatus.value)
-  }
-
-  // Filter by search query
+  let filtered = documents.value
+  
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(doc => 
-        doc.nombre.toLowerCase().includes(query) ||
-        doc.tipo.toLowerCase().includes(query)
-      )
+      doc.name.toLowerCase().includes(query) || 
+      doc.project.toLowerCase().includes(query)
+    )
+  }
+  
+  if (filterProject.value) {
+    const projectMap = {
+      'proyecto1': 'Subestación Central',
+      'proyecto2': 'Línea 220kV',
+      'proyecto3': 'Subestación Norte'
+    }
+    filtered = filtered.filter(doc => doc.project === projectMap[filterProject.value])
   }
   
   return filtered
 })
 
-// Methods
-const formatDate = (date) => {
-  if (!date) return ''
-  return format(new Date(date), 'dd MMM yyyy, HH:mm', { locale: es })
-}
-
-const getDocumentIcon = (tipo) => {
-  switch (tipo) {
-    case 'TE1':
-    case 'TE2':
-      return 'description'
-    case 'plano':
-      return 'architecture'
-    case 'informe':
-      return 'summarize'
-    case 'foto':
-      return 'photo'
-    case 'certificado':
-      return 'verified'
-    default:
-      return 'insert_drive_file'
+// Helper functions
+function getDocumentIcon(type) {
+  switch(type) {
+    case 'pdf': return 'picture_as_pdf'
+    case 'excel': return 'table_view'
+    case 'word': return 'description'
+    default: return 'insert_drive_file'
   }
 }
 
-const getDocumentTypeName = (tipo) => {
-  switch (tipo) {
-    case 'TE1':
-      return 'TE1 - Declaración'
-    case 'TE2':
-      return 'TE2 - Protocolo'
-    case 'plano':
-      return 'Plano Eléctrico'
-    case 'informe':
-      return 'Informe Técnico'
-    case 'foto':
-      return 'Fotografía'
-    case 'certificado':
-      return 'Certificado'
-    default:
-      return tipo
+function getStatusText(status) {
+  switch(status) {
+    case 'approved': return 'Aprobado'
+    case 'pending': return 'Pendiente'
+    case 'rejected': return 'Rechazado'
+    case 'draft': return 'Borrador'
+    default: return status
   }
 }
 
-const handleFileChange = (event) => {
-  uploadData.value.file = event.target.files[0]
+function formatDate(date) {
+  return format(date, "d 'de' MMMM, yyyy", { locale: es })
 }
 
-const loadProjects = async () => {
-  try {
-    await getProjects()
-  } catch (error) {
-    console.error('Error loading projects:', error)
-    // Si hay error, cargar proyectos de demostración
-    await loadDemoProjects()
-  }
-}
-
-const loadDocumentsForProject = async () => {
-  if (!selectedProjectId.value) return
-  
-  console.log('Cargando documentos para proyecto:', selectedProjectId.value)
-  uploadData.value.projectId = selectedProjectId.value
+// Funciones de negocio
+async function addDocument() {
+  isLoading.value = true
+  error.value = null
   
   try {
-    await getProjectDocuments(selectedProjectId.value)
-    console.log('Documentos cargados:', documentStore.currentProjectDocuments)
-  } catch (error) {
-    console.error('Error loading documents:', error)
-  }
-}
-
-const uploadFile = async () => {
-  if (!uploadData.value.file) {
-    uploadError.value = 'Por favor, seleccione un archivo'
-    return
-  }
-
-  isUploading.value = true
-  uploadError.value = ''
-
-  try {
-    await uploadDocument(
-      selectedProjectId.value,
-      uploadData.value.tipo,
-      uploadData.value.file,
-      uploadData.value.nombre
-    )
-    
-    // Reset form
-    uploadData.value = {
-      projectId: selectedProjectId.value,
-      tipo: '',
-      nombre: '',
-      file: null
+    // Aquí iría la lógica para crear el documento
+    const projectMap = {
+      'proyecto1': 'Subestación Central',
+      'proyecto2': 'Línea 220kV',
+      'proyecto3': 'Subestación Norte'
     }
     
-    if (fileInput.value) {
-      fileInput.value.value = ''
+    const newDoc = {
+      id: documents.value.length + 1,
+      name: newDocument.value.name,
+      type: newDocument.value.type,
+      project: projectMap[newDocument.value.project],
+      updatedAt: new Date(),
+      status: 'draft'
     }
     
-    showUploadModal.value = false
-    
-    // Reload documents
-    await loadDocumentsForProject()
-  } catch (error) {
-    console.error('Error uploading document:', error)
-    uploadError.value = 'Error al subir el documento'
+    documents.value.push(newDoc)
+    showAddDocumentModal.value = false
+    newDocument.value = {
+      name: '',
+      project: '',
+      type: 'pdf'
+    }
+  } catch (err) {
+    error.value = 'Error al crear el documento'
   } finally {
-    isUploading.value = false
+    isLoading.value = false
   }
 }
 
-const validateDocument = async (document) => {
-  try {
-    await validateDoc(document.id, 'Documento validado correctamente')
-    await loadDocumentsForProject()
-  } catch (error) {
-    console.error('Error validating document:', error)
-  }
+function editDocument(doc) {
+  // Implementar lógica de edición
+  console.log('Editar documento:', doc)
 }
 
-const rejectDocument = async (document) => {
-  try {
-    await rejectDoc(document.id, 'Documento rechazado')
-    await loadDocumentsForProject()
-  } catch (error) {
-    console.error('Error rejecting document:', error)
-  }
+function downloadDocument(doc) {
+  // Implementar lógica de descarga
+  console.log('Descargar documento:', doc)
 }
 
-// Manejar subida exitosa de documento
-const handleUploadSuccess = async (document) => {
-  showUploadModal.value = false
-  await loadDocumentsForProject()
+function showDocumentOptions(doc) {
+  // Implementar lógica de opciones
+  console.log('Mostrar opciones del documento:', doc)
 }
-
-// Cargar proyecto al montar el componente
-onMounted(async () => {
-  await loadProjects()
-  
-  // Verificar si se pasó un projectId en la URL
-  const route = useRoute()
-  if (route.query.projectId) {
-    selectedProjectId.value = route.query.projectId.toString()
-    console.log('ProjectId de la URL:', selectedProjectId.value)
-    await loadDocumentsForProject()
-  }
-})
 </script> 
-
-<style scoped>
-.badge {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-}
-
-.btn {
-  @apply px-4 py-2 rounded-md font-medium transition-colors;
-}
-
-.btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700;
-}
-</style> 

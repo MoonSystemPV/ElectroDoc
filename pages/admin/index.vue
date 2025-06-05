@@ -1,546 +1,453 @@
 <template>
-  <AppLayout>
-    <div class="container mx-auto py-6 px-4">
-      <h1 class="text-2xl font-bold text-gray-800 mb-6">Panel de Administración</h1>
-      
-      <div class="bg-white rounded-lg shadow p-6 mb-6">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-bold text-gray-800">Gestión de Usuarios</h2>
-          
-          <button 
-            @click="showCreateUserModal = true"
-            class="btn btn-primary flex items-center"
-          >
-            <span class="material-icons text-sm mr-1">add</span>
-            Crear Usuario
+  <MainLayout>
+    <div class="p-2 md:p-0">
+      <h1 class="text-3xl font-extrabold mb-8 text-pink-500 dark:text-pink-400 tracking-tight">Usuarios</h1>
+      <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl p-8 transition-colors">
+        <div class="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+          <input v-model="searchQuery" type="text" placeholder="Buscar usuarios..." class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-72" />
+          <select v-model="filterRole" class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-60">
+            <option value="all">Todos los roles</option>
+            <option value="admin">Administradores</option>
+            <option value="supervisor">Supervisores</option>
+            <option value="tecnico">Técnicos</option>
+          </select>
+          <button @click="showAddUserModal = true" class="ml-auto flex items-center gap-2 bg-pink-500 hover:bg-pink-400 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
+            <span class="material-icons">person_add</span> Añadir Usuario
           </button>
         </div>
         
-        <div v-if="isLoading" class="py-8 text-center text-gray-500">
-          <div class="animate-spin mx-auto h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-          <p class="mt-2">Cargando usuarios...</p>
+        <div v-if="isLoading" class="text-center p-8">
+          <div class="animate-spin h-10 w-10 border-4 border-pink-500 border-t-transparent rounded-full mx-auto"></div>
+          <p class="mt-2 text-zinc-600 dark:text-zinc-400">Cargando usuarios...</p>
         </div>
         
-        <div v-else-if="users.length === 0" class="py-10 text-center text-gray-500">
-          <span class="material-icons text-4xl mb-2">people</span>
-          <p>No hay usuarios registrados</p>
+        <div v-else-if="filteredUsers.length === 0" class="text-center p-8">
+          <p class="text-lg text-zinc-500 dark:text-zinc-400">No se encontraron usuarios</p>
         </div>
         
-        <div v-else>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nombre
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Rol
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Última Conexión
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acciones
-                  </th>
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+            <thead>
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Nombre</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Rol</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Fecha Creación</th>
+                <th class="px-6 py-3"></th>
                 </tr>
               </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="user in users" :key="user.id">
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                      <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-medium mr-3">
-                        {{ getUserInitials(user.nombre) }}
+            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+              <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-700 transition">
+                <td class="px-6 py-4 whitespace-nowrap flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-pink-200 dark:bg-pink-400 flex items-center justify-center text-pink-700 dark:text-white font-bold text-lg">
+                    {{ getInitials(user.nombre) }}
                       </div>
-                      <div class="text-sm font-medium text-gray-900">
-                        {{ user.nombre }}
-                      </div>
-                    </div>
+                  <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ user.nombre }}</span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ user.email }}
-                  </td>
+                <td class="px-6 py-4 whitespace-nowrap text-zinc-700 dark:text-zinc-100">{{ user.email }}</td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <span 
-                      class="badge"
+                  <span class="px-3 py-1 rounded-full text-xs font-semibold"
                       :class="{
-                        'bg-blue-100 text-blue-800': user.role === 'tecnico',
-                        'bg-purple-100 text-purple-800': user.role === 'administrativo',
-                        'bg-green-100 text-green-800': user.role === 'supervisor'
-                      }"
-                    >
-                      {{ getRoleLabel(user.role) }}
+                      'bg-pink-100 dark:bg-pink-500 text-pink-700 dark:text-white': user.role === 'admin',
+                      'bg-cyan-100 dark:bg-cyan-500 text-cyan-700 dark:text-white': user.role === 'supervisor',
+                      'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': user.role === 'tecnico'
+                    }">
+                    {{ getRoleName(user.role) }}
                     </span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span 
-                      class="badge"
-                      :class="{
-                        'bg-green-100 text-green-800': user.activo,
-                        'bg-red-100 text-red-800': !user.activo
-                      }"
-                    >
-                      {{ user.activo ? 'Activo' : 'Inactivo' }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ user.lastLogin ? formatDate(user.lastLogin) : 'Nunca' }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button
-                      @click="openEditUserModal(user)"
-                      class="text-blue-600 hover:text-blue-900"
-                      title="Editar usuario"
-                    >
-                      <span class="material-icons text-sm">edit</span>
-                    </button>
-                    
-                    <button
-                      v-if="user.activo"
-                      @click="deactivateUser(user.id)"
-                      class="text-red-600 hover:text-red-900"
-                      title="Desactivar usuario"
-                    >
-                      <span class="material-icons text-sm">block</span>
-                    </button>
-                    
-                    <button
-                      v-else
-                      @click="activateUser(user.id)"
-                      class="text-green-600 hover:text-green-900"
-                      title="Activar usuario"
-                    >
-                      <span class="material-icons text-sm">check_circle</span>
-                    </button>
-                    
-                    <button
-                      @click="resetUserPassword(user.id)"
-                      class="text-yellow-600 hover:text-yellow-900"
-                      title="Restablecer contraseña"
-                    >
-                      <span class="material-icons text-sm">vpn_key</span>
-                    </button>
+                <td class="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-300">{{ formatDate(user.fechaCreacion) }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-2">
+                  <button @click="resetPassword(user)" class="text-blue-600 dark:text-blue-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">Cambiar Contraseña</button>
+                  <button @click="confirmDeleteUser(user)" class="text-red-600 dark:text-red-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">Eliminar</button>
                   </td>
                 </tr>
               </tbody>
             </table>
-          </div>
         </div>
       </div>
       
-      <!-- Create User Modal -->
-      <div
-        v-if="showCreateUserModal"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-      >
-        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-          <h2 class="text-xl font-bold mb-4">Crear Nuevo Usuario</h2>
+      <!-- Modal de Añadir Usuario -->
+      <div v-if="showAddUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl max-w-md w-full p-6">
+          <h2 class="text-xl font-bold mb-4 text-zinc-900 dark:text-zinc-100">Añadir Usuario</h2>
           
-          <div v-if="userError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {{ userError }}
+          <div v-if="error" class="bg-red-50 dark:bg-red-900/50 border-l-4 border-red-400 p-4 mb-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <span class="material-icons text-red-400">error</span>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
+              </div>
+            </div>
           </div>
           
-          <form @submit.prevent="createUser" class="space-y-4">
+          <form @submit.prevent="addUser">
+            <div class="space-y-4">
             <div>
-              <label for="nombre" class="block text-sm font-medium text-gray-700 mb-1">
-                Nombre Completo
-              </label>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nombre</label>
               <input
-                id="nombre"
-                v-model="userData.nombre"
+                  v-model="newUser.nombre" 
                 type="text"
                 required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
+                  placeholder="Nombre completo"
               />
             </div>
             
             <div>
-              <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-                Correo Electrónico
-              </label>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email</label>
               <input
-                id="email"
-                v-model="userData.email"
+                  v-model="newUser.email" 
                 type="email"
                 required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
+                  placeholder="correo@ejemplo.com"
               />
             </div>
             
             <div>
-              <label for="role" class="block text-sm font-medium text-gray-700 mb-1">
-                Rol
-              </label>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Rol</label>
               <select
-                id="role"
-                v-model="userData.role"
+                  v-model="newUser.role" 
                 required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
               >
-                <option value="" disabled>Seleccionar rol</option>
+                  <option value="supervisor">Supervisor</option>
                 <option value="tecnico">Técnico</option>
-                <option value="administrativo">Administrativo</option>
-                <option value="supervisor">Supervisor</option>
               </select>
             </div>
             
             <div>
-              <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
-                Contraseña Inicial
-              </label>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Contraseña</label>
               <input
-                id="password"
-                v-model="userData.password"
+                  v-model="newUser.password" 
                 type="password"
                 required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
+                  placeholder="Contraseña"
               />
-              <p class="text-xs text-gray-500 mt-1">
-                Mínimo 6 caracteres. Se solicitará cambiar al primer inicio de sesión.
-              </p>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Mínimo 6 caracteres</p>
+              </div>
             </div>
             
-            <div class="flex justify-end gap-3 mt-6">
+            <div class="mt-6 flex justify-end space-x-3">
               <button
                 type="button"
-                @click="showCreateUserModal = false"
-                class="btn btn-secondary"
+                @click="showAddUserModal = false" 
+                class="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition"
               >
                 Cancelar
               </button>
-              
               <button
                 type="submit"
-                class="btn btn-primary"
-                :disabled="isUserActionLoading"
+                class="px-4 py-2 bg-pink-500 hover:bg-pink-400 text-white rounded-lg transition"
+                :disabled="isLoading"
               >
-                <span v-if="isUserActionLoading" class="flex items-center">
-                  <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Creando...
-                </span>
-                <span v-else>Crear Usuario</span>
+                <span v-if="isLoading" class="material-icons animate-spin mr-1 text-sm">autorenew</span>
+                Añadir Usuario
               </button>
             </div>
           </form>
         </div>
       </div>
       
-      <!-- Edit User Modal -->
-      <div
-        v-if="showEditUserModal"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-      >
-        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-          <h2 class="text-xl font-bold mb-4">Editar Usuario</h2>
+      <!-- Modal de Cambiar Contraseña -->
+      <div v-if="showPasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl max-w-md w-full p-6">
+          <h2 class="text-xl font-bold mb-4 text-zinc-900 dark:text-zinc-100">Cambiar Contraseña</h2>
           
-          <div v-if="userError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {{ userError }}
+          <div v-if="error" class="bg-red-50 dark:bg-red-900/50 border-l-4 border-red-400 p-4 mb-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <span class="material-icons text-red-400">error</span>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
+              </div>
+            </div>
           </div>
           
-          <form @submit.prevent="updateUser" class="space-y-4">
+          <form @submit.prevent="handlePasswordChange">
+            <div class="space-y-4">
             <div>
-              <label for="edit-nombre" class="block text-sm font-medium text-gray-700 mb-1">
-                Nombre Completo
-              </label>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Usuario</label>
+                <div class="p-2 bg-zinc-100 dark:bg-zinc-900 rounded-lg text-zinc-800 dark:text-zinc-100">
+                  {{ selectedUser?.nombre }} ({{ selectedUser?.email }})
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nueva Contraseña</label>
               <input
-                id="edit-nombre"
-                v-model="editUserData.nombre"
-                type="text"
+                  v-model="newPassword" 
+                  type="password" 
                 required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
+                  placeholder="Nueva contraseña"
+                  minlength="6"
               />
             </div>
-            
-            <div>
-              <label for="edit-email" class="block text-sm font-medium text-gray-700 mb-1">
-                Correo Electrónico
-              </label>
-              <input
-                id="edit-email"
-                v-model="editUserData.email"
-                type="email"
-                required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
             </div>
             
-            <div>
-              <label for="edit-role" class="block text-sm font-medium text-gray-700 mb-1">
-                Rol
-              </label>
-              <select
-                id="edit-role"
-                v-model="editUserData.role"
-                required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="" disabled>Seleccionar rol</option>
-                <option value="tecnico">Técnico</option>
-                <option value="administrativo">Administrativo</option>
-                <option value="supervisor">Supervisor</option>
-              </select>
-            </div>
-            
-            <div class="flex justify-end gap-3 mt-6">
+            <div class="mt-6 flex justify-end space-x-3">
               <button
                 type="button"
-                @click="showEditUserModal = false"
-                class="btn btn-secondary"
+                @click="showPasswordModal = false" 
+                class="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition"
               >
                 Cancelar
               </button>
-              
               <button
                 type="submit"
-                class="btn btn-primary"
-                :disabled="isUserActionLoading"
+                class="px-4 py-2 bg-pink-500 hover:bg-pink-400 text-white rounded-lg transition"
+                :disabled="isLoading"
               >
-                <span v-if="isUserActionLoading" class="flex items-center">
-                  <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Actualizando...
-                </span>
-                <span v-else>Actualizar Usuario</span>
+                <span v-if="isLoading" class="material-icons animate-spin mr-1 text-sm">autorenew</span>
+                Cambiar Contraseña
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Modal de Eliminar Usuario -->
+      <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl max-w-md w-full p-6">
+          <h2 class="text-xl font-bold mb-4 text-zinc-900 dark:text-zinc-100">Confirmar Eliminación</h2>
+          
+          <p class="mb-4 text-zinc-700 dark:text-zinc-300">¿Está seguro de que desea eliminar al usuario <strong>{{ selectedUser?.nombre }}</strong>?</p>
+          <p class="text-sm text-red-600 dark:text-red-400 mb-6">Esta acción no se puede deshacer.</p>
+          
+          <div class="flex justify-end space-x-3">
+            <button 
+              type="button" 
+              @click="showDeleteModal = false" 
+              class="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition"
+            >
+              Cancelar
+            </button>
+            <button 
+              @click="handleDeleteUser" 
+              class="px-4 py-2 bg-red-500 hover:bg-red-400 text-white rounded-lg transition"
+              :disabled="isLoading"
+            >
+              <span v-if="isLoading" class="material-icons animate-spin mr-1 text-sm">autorenew</span>
+              Eliminar
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </AppLayout>
+  </MainLayout>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
+import MainLayout from '~/components/layout/MainLayout.vue'
 
 definePageMeta({
-  middleware: 'auth'
+  middleware: ['auth', 'admin']
 })
 
-// Composables
-const { getAllUsers, createUser: apiCreateUser, updateUser: apiUpdateUser, 
-        activateUser: apiActivateUser, deactivateUser: apiDeactivateUser, 
-        resetPassword: apiResetPassword, error: usersError, isLoading } = useUsers()
+const { user, createUser, changePassword, getAllUsers, deleteUser, isLoading: authLoading, error: authError } = useAuth()
 const { showToast } = useToast()
 
-// State
-const users = ref<any[]>([])
-const showCreateUserModal = ref(false)
-const showEditUserModal = ref(false)
-const isUserActionLoading = ref(false)
-const userError = ref('')
-const userData = ref({
+// Estado
+const users = ref([])
+const isLoading = ref(false)
+const error = ref(null)
+const searchQuery = ref('')
+const filterRole = ref('all')
+
+// Estado para modal de creación de usuario
+const showAddUserModal = ref(false)
+const newUser = ref({
   nombre: '',
   email: '',
-  role: '',
+  role: 'tecnico',
   password: ''
 })
-const editUserData = ref({
-  id: '',
-  nombre: '',
-  email: '',
-  role: ''
-})
 
-// Methods
-const getUserInitials = (name: string) => {
-  if (!name) return '?'
-  
-  const nameParts = name.split(' ')
-  if (nameParts.length >= 2) {
-    return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase()
-  }
-  return nameParts[0][0].toUpperCase()
-}
+// Estado para modal de cambio de contraseña
+const showPasswordModal = ref(false)
+const selectedUser = ref(null)
+const newPassword = ref('')
 
-const getRoleLabel = (role: string) => {
-  switch (role) {
-    case 'tecnico': return 'Técnico'
-    case 'administrativo': return 'Administrativo'
-    case 'supervisor': return 'Supervisor'
-    default: return role
-  }
-}
+// Estado para modal de eliminación
+const showDeleteModal = ref(false)
 
-const formatDate = (date: Date) => {
-  return format(date, 'dd MMM yyyy, HH:mm', { locale: es })
-}
-
-const loadUsers = async () => {
-  try {
-    users.value = await getAllUsers()
-  } catch (err) {
-    console.error('Error loading users:', err)
-  }
-}
-
-const createUser = async () => {
-  userError.value = ''
-  isUserActionLoading.value = true
-  
-  try {
-    const newUser = await apiCreateUser(
-      userData.value.nombre,
-      userData.value.email,
-      userData.value.password,
-      userData.value.role
-    )
-    
-    if (newUser) {
-      users.value.push(newUser)
-      
-      // Reset form and close modal
-      userData.value = {
-        nombre: '',
-        email: '',
-        role: '',
-        password: ''
-      }
-      showCreateUserModal.value = false
-    } else {
-      userError.value = usersError.value || 'Error al crear el usuario'
-    }
-  } catch (err) {
-    console.error('Error creating user:', err)
-    userError.value = 'Error al crear el usuario'
-  } finally {
-    isUserActionLoading.value = false
-  }
-}
-
-const openEditUserModal = (user: any) => {
-  editUserData.value = {
-    id: user.id,
-    nombre: user.nombre,
-    email: user.email,
-    role: user.role
-  }
-  
-  showEditUserModal.value = true
-}
-
-const updateUser = async () => {
-  userError.value = ''
-  isUserActionLoading.value = true
-  
-  try {
-    const success = await apiUpdateUser(
-      editUserData.value.id,
-      {
-        nombre: editUserData.value.nombre,
-        email: editUserData.value.email,
-        role: editUserData.value.role
-      }
-    )
-    
-    if (success) {
-      // Update user in list
-      const index = users.value.findIndex(u => u.id === editUserData.value.id)
-      if (index !== -1) {
-        users.value[index] = {
-          ...users.value[index],
-          nombre: editUserData.value.nombre,
-          email: editUserData.value.email,
-          role: editUserData.value.role
-        }
-      }
-      
-      // Close modal
-      showEditUserModal.value = false
-    } else {
-      userError.value = usersError.value || 'Error al actualizar el usuario'
-    }
-  } catch (err) {
-    console.error('Error updating user:', err)
-    userError.value = 'Error al actualizar el usuario'
-  } finally {
-    isUserActionLoading.value = false
-  }
-}
-
-const activateUser = async (userId: string) => {
-  try {
-    const success = await apiActivateUser(userId)
-    if (success) {
-      const index = users.value.findIndex(u => u.id === userId)
-      if (index !== -1) {
-        users.value[index].activo = true
-      }
-      showToast('Usuario activado correctamente', 'success')
-    }
-  } catch (err) {
-    console.error('Error activating user:', err)
-    showToast('Error al activar el usuario', 'error')
-  }
-}
-
-const deactivateUser = async (userId: string) => {
-  try {
-    const success = await apiDeactivateUser(userId)
-    if (success) {
-      const index = users.value.findIndex(u => u.id === userId)
-      if (index !== -1) {
-        users.value[index].activo = false
-      }
-      showToast('Usuario desactivado correctamente', 'success')
-    }
-  } catch (err) {
-    console.error('Error deactivating user:', err)
-    showToast('Error al desactivar el usuario', 'error')
-  }
-}
-
-const resetUserPassword = async (userId: string) => {
-  if (!window.confirm('¿Está seguro de restablecer la contraseña de este usuario? Se enviará un enlace de restablecimiento a su correo electrónico.')) {
-    return
-  }
-  try {
-    const success = await apiResetPassword(userId)
-    if (success) {
-      showToast('Se ha enviado un enlace de restablecimiento de contraseña al correo electrónico del usuario', 'success')
-    } else {
-      showToast('Error al restablecer la contraseña', 'error')
-    }
-  } catch (err) {
-    console.error('Error resetting password:', err)
-    showToast('Error al restablecer la contraseña', 'error')
-  }
-}
-
-// Initialize
+// Cargar usuarios al montar el componente
 onMounted(async () => {
   await loadUsers()
 })
+
+// Función para cargar usuarios
+async function loadUsers() {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    users.value = await getAllUsers()
+    console.log('Usuarios cargados:', users.value.length)
+  } catch (err) {
+    console.error('Error al cargar usuarios:', err)
+    error.value = 'Error al cargar usuarios'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Usuarios filtrados
+const filteredUsers = computed(() => {
+  return users.value.filter(user => {
+    // Filtrar por rol
+    if (filterRole.value !== 'all' && user.role !== filterRole.value) {
+      return false
+    }
+    
+    // Filtrar por búsqueda
+    if (searchQuery.value) {
+      const query = searchQuery.value.toLowerCase()
+      return (
+        user.nombre.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query)
+      )
+    }
+    
+    return true
+  })
+})
+
+// Funciones para la gestión de usuarios
+async function addUser() {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    const success = await createUser(newUser.value)
+    
+    if (success) {
+      showAddUserModal.value = false
+      showToast(`Usuario ${newUser.value.nombre} creado correctamente.`, 'success')
+      newUser.value = {
+        nombre: '',
+        email: '',
+        role: 'tecnico',
+        password: ''
+      }
+      await loadUsers() // Recargar la lista de usuarios
+    } else {
+      error.value = authError.value
+    }
+  } catch (err) {
+    console.error('Error al crear usuario:', err)
+    error.value = 'Error al crear usuario'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function resetPassword(user) {
+  selectedUser.value = user
+  newPassword.value = ''
+  showPasswordModal.value = true
+}
+
+async function handlePasswordChange() {
+  if (!selectedUser.value) return
+  
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    const success = await changePassword(selectedUser.value.id, newPassword.value)
+    
+    if (success) {
+      showPasswordModal.value = false
+      selectedUser.value = null
+      newPassword.value = ''
+      showToast('Contraseña cambiada correctamente', 'success')
+    } else {
+      error.value = authError.value
+    }
+  } catch (err) {
+    console.error('Error al cambiar contraseña:', err)
+    error.value = 'Error al cambiar contraseña'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function confirmDeleteUser(user) {
+  selectedUser.value = user
+  showDeleteModal.value = true
+}
+
+async function handleDeleteUser() {
+  if (!selectedUser.value) return
+  
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    const success = await deleteUser(selectedUser.value.id)
+    
+    if (success) {
+      showDeleteModal.value = false
+      showToast(`Usuario ${selectedUser.value.nombre} eliminado correctamente.`, 'error')
+      users.value = users.value.filter(u => u.id !== selectedUser.value.id)
+      selectedUser.value = null
+    } else {
+      error.value = authError.value
+    }
+  } catch (err) {
+    console.error('Error al eliminar usuario:', err)
+    error.value = 'Error al eliminar usuario'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Funciones de utilidad
+function getInitials(name) {
+  if (!name) return 'U'
+  
+  const parts = name.split(' ')
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  }
+  return parts[0][0].toUpperCase()
+}
+
+function getRoleName(role) {
+  switch (role) {
+    case 'admin':
+    case 'administrativo':
+      return 'Administrador'
+    case 'supervisor':
+      return 'Supervisor'
+    case 'tecnico':
+      return 'Técnico'
+    default:
+      return role
+  }
+}
+
+function formatDate(date) {
+  if (!date) return 'Fecha desconocida'
+  
+  try {
+    const d = date instanceof Date ? date : new Date(date)
+    return d.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    })
+  } catch (e) {
+    return 'Fecha inválida'
+  }
+}
 </script>
-
-<style scoped>
-.badge {
-  @apply inline-flex px-2 py-0.5 rounded text-xs font-medium;
-}
-
-.btn {
-  @apply px-4 py-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
-}
-
-.btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
-}
-
-.btn-secondary {
-  @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-500;
-}
-</style> 

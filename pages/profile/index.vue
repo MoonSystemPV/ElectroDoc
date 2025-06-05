@@ -1,379 +1,408 @@
 <template>
-  <AppLayout>
-    <div class="container mx-auto py-6 px-4">
-      <h1 class="text-2xl font-bold text-gray-800 mb-6">Mi Perfil</h1>
+  <MainLayout>
+    <div class="p-6">
+      <h1 class="text-3xl font-extrabold mb-8 text-blue-500 dark:text-white tracking-tight">Configuración</h1>
       
-      <div v-if="isLoading" class="py-20 text-center text-gray-500">
-        <div class="animate-spin mx-auto h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-        <p class="mt-3">Cargando información de perfil...</p>
-      </div>
-      
-      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- User Info Card -->
-        <div class="bg-white rounded-lg shadow p-6 col-span-1">
-          <div class="flex flex-col items-center">
-            <div class="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-white text-3xl font-bold mb-4">
-              {{ getUserInitials() }}
-            </div>
-            
-            <h2 class="text-xl font-bold text-gray-800">{{ user?.nombre }}</h2>
-            <p class="text-gray-600">{{ user?.email }}</p>
-            
-            <div class="mt-2">
-              <span 
-                class="badge"
-                :class="{
-                  'bg-blue-100 text-blue-800': user?.role === 'tecnico',
-                  'bg-purple-100 text-purple-800': user?.role === 'administrativo',
-                  'bg-green-100 text-green-800': user?.role === 'supervisor'
-                }"
-              >
-                {{ getUserRoleLabel() }}
-              </span>
-            </div>
-            
-            <div class="mt-6 w-full">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Sidebar de navegación -->
+        <div class="bg-white dark:bg-zinc-800 p-4 rounded-lg shadow">
+          <ul class="space-y-2">
+            <li>
               <button 
-                @click="showChangePasswordModal = true"
-                class="btn btn-secondary w-full"
+                @click="activeTab = 'profile'" 
+                class="w-full text-left px-4 py-2 rounded-md transition-colors"
+                :class="activeTab === 'profile' ? 'bg-blue-50 dark:bg-zinc-700 text-blue-600 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-zinc-100'"
               >
-                Cambiar contraseña
+                <span class="flex items-center">
+                  <span class="material-icons mr-2">person</span>
+                  Perfil
+                </span>
               </button>
-            </div>
-          </div>
+            </li>
+            <li>
+              <button 
+                @click="activeTab = 'security'" 
+                class="w-full text-left px-4 py-2 rounded-md transition-colors"
+                :class="activeTab === 'security' ? 'bg-blue-50 dark:bg-zinc-700 text-blue-600 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-zinc-100'"
+              >
+                <span class="flex items-center">
+                  <span class="material-icons mr-2">security</span>
+                  Seguridad
+                </span>
+              </button>
+            </li>
+            <li>
+              <button 
+                @click="activeTab = 'notifications'" 
+                class="w-full text-left px-4 py-2 rounded-md transition-colors"
+                :class="activeTab === 'notifications' ? 'bg-blue-50 dark:bg-zinc-700 text-blue-600 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-zinc-100'"
+              >
+                <span class="flex items-center">
+                  <span class="material-icons mr-2">notifications</span>
+                  Notificaciones
+                </span>
+              </button>
+            </li>
+            <li>
+              <button 
+                @click="activeTab = 'appearance'" 
+                class="w-full text-left px-4 py-2 rounded-md transition-colors"
+                :class="activeTab === 'appearance' ? 'bg-blue-50 dark:bg-zinc-700 text-blue-600 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-zinc-100'"
+              >
+                <span class="flex items-center">
+                  <span class="material-icons mr-2">palette</span>
+                  Apariencia
+                </span>
+              </button>
+            </li>
+          </ul>
         </div>
         
-        <!-- Activities Card -->
-        <div class="bg-white rounded-lg shadow p-6 col-span-1 md:col-span-2">
-          <h2 class="text-lg font-bold text-gray-800 mb-4">Actividad Reciente</h2>
-          
-          <div v-if="isLoadingActivities" class="py-8 text-center text-gray-500">
-            <div class="animate-spin mx-auto h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-            <p class="mt-2">Cargando actividades...</p>
-          </div>
-          
-          <div v-else-if="activities.length === 0" class="py-10 text-center text-gray-500">
-            <span class="material-icons text-4xl mb-2">history</span>
-            <p>No tienes actividades recientes</p>
-          </div>
-          
-          <div v-else class="space-y-4">
-            <div
-              v-for="activity in activities"
-              :key="activity.id"
-              class="border-l-4 border-blue-500 bg-blue-50 p-4 rounded-r-md"
-            >
-              <div class="flex items-start">
-                <div
-                  class="rounded-full bg-white p-2 mr-3"
-                  :class="{
-                    'text-green-600': ['upload', 'status_update'].includes(activity.action),
-                    'text-blue-600': ['create_project', 'update_project'].includes(activity.action),
-                    'text-red-600': ['delete', 'delete_project'].includes(activity.action),
-                    'text-yellow-600': ['version_update'].includes(activity.action)
-                  }"
-                >
-                  <span class="material-icons text-sm">
-                    {{ getActivityIcon(activity.action) }}
-                  </span>
-                </div>
-                <div>
-                  <div class="flex items-center">
-                    <span class="text-sm text-gray-500">{{ formatDateTime(activity.timestamp) }}</span>
+        <!-- Contenido principal -->
+        <div class="md:col-span-2 bg-white dark:bg-zinc-800 p-6 rounded-lg shadow">
+          <!-- Perfil -->
+          <div v-if="activeTab === 'profile'">
+            <h2 class="text-xl font-semibold mb-4 text-zinc-900 dark:text-zinc-100">Perfil de Usuario</h2>
+            
+            <form @submit.prevent="saveProfile">
+              <div class="space-y-4">
+                <div class="flex items-center mb-6">
+                  <div class="w-20 h-20 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl">
+                    {{ getInitials(profile.nombre) }}
                   </div>
-                  <p class="text-sm text-gray-600 mt-1">{{ activity.details || getActivityDescription(activity) }}</p>
+                  <div class="ml-4">
+                    <button type="button" class="px-3 py-1 text-sm bg-gray-200 dark:bg-zinc-700 text-gray-700 dark:text-zinc-100 rounded hover:bg-gray-300 dark:hover:bg-zinc-600">
+                      Cambiar foto
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1">Nombre</label>
+                  <input 
+                    v-model="profile.nombre" 
+                    type="text" 
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
+                  />
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1">Email</label>
+                  <input 
+                    v-model="profile.email" 
+                    type="email" 
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
+                  />
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1">Cargo</label>
+                  <input 
+                    v-model="profile.cargo" 
+                    type="text" 
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
+                  />
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1">Teléfono</label>
+                  <input 
+                    v-model="profile.telefono" 
+                    type="tel" 
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
+                  />
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1">Rol</label>
+                  <div class="text-gray-700 dark:text-zinc-100 py-2">{{ getRoleName(profile.role) }}</div>
+                </div>
+                
+                <div class="pt-4">
+                  <button 
+                    type="submit" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+          
+          <!-- Seguridad -->
+          <div v-if="activeTab === 'security'">
+            <h2 class="text-xl font-semibold mb-4 text-zinc-900 dark:text-zinc-100">Seguridad</h2>
+            
+            <form @submit.prevent="changePassword">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1">Contraseña Actual</label>
+                  <input 
+                    v-model="security.currentPassword" 
+                    type="password" 
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
+                  />
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1">Nueva Contraseña</label>
+                  <input 
+                    v-model="security.newPassword" 
+                    type="password" 
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
+                  />
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-zinc-200 mb-1">Confirmar Nueva Contraseña</label>
+                  <input 
+                    v-model="security.confirmPassword" 
+                    type="password" 
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-900 text-gray-900 dark:text-zinc-100"
+                  />
+                </div>
+                
+                <div class="pt-4">
+                  <button 
+                    type="submit" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Cambiar Contraseña
+                  </button>
+                </div>
+              </div>
+            </form>
+            
+            <div class="mt-8 border-t pt-6">
+              <h3 class="text-lg font-medium mb-4 text-zinc-900 dark:text-zinc-100">Sesiones Activas</h3>
+              
+              <div class="border rounded-md divide-y border-gray-300 dark:border-zinc-700">
+                <div class="p-4">
+                  <div class="flex justify-between items-center">
+                    <div>
+                      <div class="font-medium text-zinc-900 dark:text-zinc-100">Este dispositivo</div>
+                      <div class="text-sm text-gray-500 dark:text-zinc-400">Windows · Chrome · Santiago, Chile</div>
+                    </div>
+                    <div>
+                      <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300">
+                        Activo ahora
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-        
-        <!-- Projects Card -->
-        <div class="bg-white rounded-lg shadow p-6 col-span-1 md:col-span-3">
-          <h2 class="text-lg font-bold text-gray-800 mb-4">Mis Proyectos</h2>
           
-          <div v-if="isLoadingProjects" class="py-8 text-center text-gray-500">
-            <div class="animate-spin mx-auto h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-            <p class="mt-2">Cargando proyectos...</p>
-          </div>
-          
-          <div v-else-if="projects.length === 0" class="py-10 text-center text-gray-500">
-            <span class="material-icons text-4xl mb-2">folder</span>
-            <p>No tienes proyectos asignados</p>
-          </div>
-          
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <ProjectCard
-              v-for="project in projects"
-              :key="project.id"
-              :project="project"
-              :can-edit="canEditProject"
-            />
-          </div>
-        </div>
-      </div>
-      
-      <!-- Change Password Modal -->
-      <div
-        v-if="showChangePasswordModal"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-      >
-        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-          <h2 class="text-xl font-bold mb-4">Cambiar Contraseña</h2>
-          
-          <div v-if="passwordError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {{ passwordError }}
-          </div>
-          
-          <form @submit.prevent="changePassword" class="space-y-4">
-            <div>
-              <label for="currentPassword" class="block text-sm font-medium text-gray-700 mb-1">
-                Contraseña Actual
-              </label>
-              <input
-                id="currentPassword"
-                v-model="passwordData.currentPassword"
-                type="password"
-                required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+          <!-- Notificaciones -->
+          <div v-if="activeTab === 'notifications'">
+            <h2 class="text-xl font-semibold mb-4 text-zinc-900 dark:text-zinc-100">Preferencias de Notificaciones</h2>
             
-            <div>
-              <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-1">
-                Nueva Contraseña
-              </label>
-              <input
-                id="newPassword"
-                v-model="passwordData.newPassword"
-                type="password"
-                required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">
-                Confirmar Nueva Contraseña
-              </label>
-              <input
-                id="confirmPassword"
-                v-model="passwordData.confirmPassword"
-                type="password"
-                required
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            
-            <div class="flex justify-end gap-3 mt-6">
-              <button
-                type="button"
-                @click="showChangePasswordModal = false"
-                class="btn btn-secondary"
-              >
-                Cancelar
-              </button>
+            <div class="space-y-4">
+              <div class="flex items-center justify-between py-2 border-b">
+                <div>
+                  <div class="font-medium text-zinc-900 dark:text-zinc-100">Notificaciones por email</div>
+                  <div class="text-sm text-gray-500 dark:text-zinc-400">Recibir notificaciones por correo electrónico</div>
+                </div>
+                <div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" v-model="notifications.email" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
               
-              <button
-                type="submit"
-                class="btn btn-primary"
-                :disabled="isChangingPassword"
-              >
-                <span v-if="isChangingPassword" class="flex items-center">
-                  <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Cambiando...
-                </span>
-                <span v-else>Cambiar Contraseña</span>
-              </button>
+              <div class="flex items-center justify-between py-2 border-b">
+                <div>
+                  <div class="font-medium text-zinc-900 dark:text-zinc-100">Notificaciones de documentos</div>
+                  <div class="text-sm text-gray-500 dark:text-zinc-400">Cuando un documento es validado o rechazado</div>
+                </div>
+                <div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" v-model="notifications.documents" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="flex items-center justify-between py-2 border-b">
+                <div>
+                  <div class="font-medium text-zinc-900 dark:text-zinc-100">Notificaciones de proyectos</div>
+                  <div class="text-sm text-gray-500 dark:text-zinc-400">Cuando es asignado a un nuevo proyecto</div>
+                </div>
+                <div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" v-model="notifications.projects" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="pt-4">
+                <button 
+                  @click="saveNotifications" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Guardar Preferencias
+                </button>
+              </div>
             </div>
-          </form>
+          </div>
+          
+          <!-- Apariencia -->
+          <div v-if="activeTab === 'appearance'">
+            <h2 class="text-xl font-semibold mb-4 text-zinc-900 dark:text-zinc-100">Apariencia</h2>
+            
+            <div class="space-y-6">
+              <div>
+                <h3 class="text-lg font-medium mb-3 text-zinc-900 dark:text-zinc-100">Tema</h3>
+                <div class="grid grid-cols-3 gap-4">
+                  <div 
+                    class="border rounded-lg p-4 cursor-pointer flex flex-col items-center"
+                    :class="{ 'border-blue-500 bg-blue-50': appearance.theme === 'light' }"
+                    @click="appearance.theme = 'light'"
+                  >
+                    <div class="w-full h-20 bg-white border rounded-md mb-2"></div>
+                    <span class="text-zinc-900 dark:text-zinc-100">Claro</span>
+                  </div>
+                  <div 
+                    class="border rounded-lg p-4 cursor-pointer flex flex-col items-center"
+                    :class="{ 'border-blue-500 bg-blue-50': appearance.theme === 'dark' }"
+                    @click="appearance.theme = 'dark'"
+                  >
+                    <div class="w-full h-20 bg-gray-800 border rounded-md mb-2"></div>
+                    <span class="text-zinc-900 dark:text-zinc-100">Oscuro</span>
+                  </div>
+                  <div 
+                    class="border rounded-lg p-4 cursor-pointer flex flex-col items-center"
+                    :class="{ 'border-blue-500 bg-blue-50': appearance.theme === 'system' }"
+                    @click="appearance.theme = 'system'"
+                  >
+                    <div class="w-full h-20 bg-gradient-to-r from-white to-gray-800 border rounded-md mb-2"></div>
+                    <span class="text-zinc-900 dark:text-zinc-100">Sistema</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="pt-4">
+                <button 
+                  @click="saveAppearance" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Guardar Preferencias
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </AppLayout>
+  </MainLayout>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed, onMounted } from 'vue'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
-
-// Components
-import ProjectCard from '~/components/projects/ProjectCard.vue'
+import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
+import MainLayout from '~/components/layout/MainLayout.vue'
 
 definePageMeta({
-  middleware: 'auth'
+  middleware: ['auth']
 })
 
-// Composables
-const { user, isLoading, changePassword: authChangePassword, error: authError } = useAuth()
-const { getUserProjects, isLoading: projectsLoading } = useProjects()
-const { getUserActivities, isLoading: activitiesLoading } = useActivities()
+const { user } = useAuth()
+const { showToast } = useToast()
 
-// State
-const projects = ref<any[]>([])
-const activities = ref<any[]>([])
-const isLoadingProjects = ref(false)
-const isLoadingActivities = ref(false)
-const showChangePasswordModal = ref(false)
-const isChangingPassword = ref(false)
-const passwordError = ref('')
-const passwordData = ref({
+// Estado local
+const activeTab = ref('profile')
+
+// Datos de perfil
+const profile = ref({
+  nombre: 'Usuario Demo',
+  email: 'demo@example.com',
+  cargo: 'Supervisor de Proyectos',
+  telefono: '+56 9 1234 5678',
+  role: 'supervisor'
+})
+
+// Datos de seguridad
+const security = ref({
   currentPassword: '',
   newPassword: '',
   confirmPassword: ''
 })
 
-// Computed
-const canEditProject = computed(() => {
-  return user.value?.role === 'supervisor' || user.value?.role === 'administrativo'
+// Notificaciones
+const notifications = ref({
+  email: true,
+  documents: true,
+  projects: true
 })
 
-// Methods
-const getUserInitials = () => {
-  if (!user.value?.nombre) return '?'
+// Apariencia
+const appearance = ref({
+  theme: 'light'
+})
+
+// Obtener iniciales del nombre
+const getInitials = (name) => {
+  if (!name) return 'U'
   
-  const nameParts = user.value.nombre.split(' ')
-  if (nameParts.length >= 2) {
-    return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase()
+  const parts = name.split(' ')
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
   }
-  return nameParts[0][0].toUpperCase()
+  return parts[0][0].toUpperCase()
 }
 
-const getUserRoleLabel = () => {
-  switch (user.value?.role) {
-    case 'tecnico': return 'Técnico'
-    case 'administrativo': return 'Administrativo'
-    case 'supervisor': return 'Supervisor'
-    default: return user.value?.role || 'Usuario'
-  }
-}
-
-const formatDateTime = (date: Date) => {
-  return format(date, 'dd MMM yyyy, HH:mm', { locale: es })
-}
-
-const getActivityIcon = (action: string) => {
-  switch (action) {
-    case 'create_project':
-      return 'add_circle'
-    case 'update_project':
-      return 'edit'
-    case 'assign_technician':
-      return 'person_add'
-    case 'remove_technician':
-      return 'person_remove'
-    case 'upload':
-      return 'upload_file'
-    case 'status_update':
-      return 'update'
+// Obtener nombre del rol
+const getRoleName = (role) => {
+  switch (role) {
+    case 'admin':
+      return 'Administrador'
+    case 'supervisor':
+      return 'Supervisor'
+    case 'tecnico':
+      return 'Técnico'
     default:
-      return 'info'
+      return role
   }
 }
 
-const getActivityDescription = (activity: any) => {
-  return activity.details || 'Realizó una acción'
+// Guardar perfil
+const saveProfile = () => {
+  showToast('Perfil guardado correctamente', 'success')
 }
 
-const loadUserProjects = async () => {
-  if (!user.value) return
-  
-  isLoadingProjects.value = true
-  
-  try {
-    projects.value = await getUserProjects()
-  } catch (err) {
-    console.error('Error loading user projects:', err)
-  } finally {
-    isLoadingProjects.value = false
-  }
-}
-
-const loadUserActivities = async () => {
-  if (!user.value) return
-  
-  isLoadingActivities.value = true
-  
-  try {
-    activities.value = await getUserActivities(user.value.id)
-  } catch (err) {
-    console.error('Error loading user activities:', err)
-  } finally {
-    isLoadingActivities.value = false
-  }
-}
-
-const changePassword = async () => {
-  passwordError.value = ''
-  
-  // Validate passwords
-  if (passwordData.value.newPassword !== passwordData.value.confirmPassword) {
-    passwordError.value = 'Las contraseñas no coinciden'
+// Cambiar contraseña
+const changePassword = () => {
+  if (security.newPassword !== security.confirmPassword) {
+    showToast('Las contraseñas no coinciden', 'error')
     return
   }
-  
-  if (passwordData.value.newPassword.length < 6) {
-    passwordError.value = 'La contraseña debe tener al menos 6 caracteres'
-    return
-  }
-  
-  isChangingPassword.value = true
-  
-  try {
-    const success = await authChangePassword(
-      passwordData.value.currentPassword,
-      passwordData.value.newPassword
-    )
-    
-    if (success) {
-      // Reset form and close modal
-      passwordData.value = {
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      }
-      showChangePasswordModal.value = false
-      
-      // Show success notification (would be implemented in a real app)
-      alert('Contraseña cambiada exitosamente')
-    } else {
-      passwordError.value = authError.value || 'Error al cambiar la contraseña'
-    }
-  } catch (err) {
-    console.error('Error changing password:', err)
-    passwordError.value = 'Error al cambiar la contraseña'
-  } finally {
-    isChangingPassword.value = false
-  }
+  showToast('Contraseña cambiada correctamente', 'success')
+  security.currentPassword = ''
+  security.newPassword = ''
+  security.confirmPassword = ''
 }
 
-// Initialize
-onMounted(async () => {
-  await Promise.all([
-    loadUserProjects(),
-    loadUserActivities()
-  ])
+// Guardar preferencias de notificaciones
+const saveNotifications = () => {
+  showToast('Preferencias de notificaciones guardadas', 'success')
+}
+
+// Guardar preferencias de apariencia
+const saveAppearance = () => {
+  showToast('Preferencias de apariencia guardadas', 'success')
+}
+
+// Cargar datos del usuario al montar
+onMounted(() => {
+  if (user.value) {
+    profile.value.nombre = user.value.nombre || 'Usuario Demo'
+    profile.value.email = user.value.email || 'demo@example.com'
+    profile.value.role = user.value.role || 'supervisor'
+  }
 })
-</script>
-
-<style scoped>
-.badge {
-  @apply inline-flex px-2 py-0.5 rounded text-xs font-medium;
-}
-
-.btn {
-  @apply px-4 py-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
-}
-
-.btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
-}
-
-.btn-secondary {
-  @apply bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-500;
-}
-</style> 
+</script> 

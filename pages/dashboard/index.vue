@@ -1,348 +1,159 @@
 <template>
-  <AppLayout>
-    <div class="space-y-6">
-      <!-- Welcome Section -->
-      <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 class="text-2xl font-bold text-gray-800">
-              Bienvenido, {{ user?.nombre || 'Usuario' }}
-            </h2>
-            <p class="text-gray-600 mt-1">
-              {{ welcomeMessage }}
-            </p>
-          </div>
-          
-          <div class="mt-4 md:mt-0">
-            <button
-              v-if="userRole === 'supervisor' || userRole === 'administrativo'"
-              @click="router.push('/projects/new')"
-              class="btn btn-primary flex items-center"
-            >
-              <span class="material-icons text-sm mr-1">add</span>
-              Nuevo Proyecto
-            </button>
-          </div>
-        </div>
+  <MainLayout>
+    <div class="p-2 md:p-0">
+      <div class="mb-10">
+        <h1 class="text-4xl font-extrabold tracking-tight text-blue-500 dark:text-white mb-2 animate-fade-in">Dashboard</h1>
+        <p class="text-lg text-zinc-500 dark:text-zinc-300 animate-fade-in delay-100">Bienvenido a tu panel de control de ElectroDoc.</p>
       </div>
-      
-      <!-- Stats Section -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="flex items-center">
-            <div class="rounded-full bg-blue-100 p-3">
-              <span class="material-icons text-blue-600">assignment</span>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <!-- Tarjeta de resumen de proyectos -->
+        <div class="bg-gradient-to-br from-white to-blue-50 dark:from-zinc-800 dark:to-blue-900/20 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in cursor-default select-none">
+          <div class="flex items-center mb-4">
+            <span class="material-icons text-blue-400 dark:text-blue-300 mr-3 text-5xl group-hover:animate-pulse transition-transform">engineering</span>
+            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Proyectos</h2>
+          </div>
+          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="5">5</p>
+          <p class="text-zinc-400 text-sm">Proyectos activos</p>
+        </div>
+        <!-- Tarjeta de resumen de documentos -->
+        <div class="bg-gradient-to-br from-white to-green-50 dark:from-zinc-800 dark:to-green-900/20 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-100 cursor-default select-none">
+          <div class="flex items-center mb-4">
+            <span class="material-icons text-amber-400 dark:text-amber-300 mr-3 text-5xl group-hover:animate-pulse transition-transform">description</span>
+            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Documentos</h2>
+          </div>
+          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="24">24</p>
+          <p class="text-zinc-400 text-sm">Documentos gestionados</p>
+        </div>
+        <!-- Tarjeta de resumen de usuarios -->
+        <div class="bg-gradient-to-br from-white to-cyan-50 dark:from-zinc-800 dark:to-cyan-900/20 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-200 cursor-default select-none">
+          <div class="flex items-center mb-4">
+            <span class="material-icons text-cyan-400 dark:text-cyan-300 mr-3 text-5xl group-hover:animate-pulse transition-transform">people</span>
+            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Usuarios</h2>
+          </div>
+          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="7">7</p>
+          <p class="text-zinc-400 text-sm">Usuarios activos</p>
+        </div>
             </div>
-            <div class="ml-4">
-              <h3 class="text-lg font-semibold text-gray-800">Proyectos Activos</h3>
-              <p class="text-2xl font-bold">{{ isLoading ? '...' : projectsCount }}</p>
+      <!-- Línea de tiempo de actividad reciente -->
+      <div class="mt-12 bg-white dark:bg-zinc-800 p-8 rounded-2xl shadow-xl transition-colors animate-fade-in delay-300">
+        <h2 class="text-2xl font-bold mb-8 text-blue-500 dark:text-blue-400">Actividad Reciente</h2>
+        <div class="relative pl-8 space-y-10">
+          <!-- Línea vertical -->
+          <div class="absolute left-2 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-200 dark:from-blue-900 to-transparent rounded-full"></div>
+          <!-- Evento 1 -->
+          <div class="flex items-start gap-4 animate-fade-in">
+            <span class="material-icons text-blue-400 dark:text-blue-300 bg-white dark:bg-zinc-900 rounded-full p-2 shadow-md border border-blue-100 dark:border-blue-700">task_alt</span>
+            <div>
+              <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 mb-1">Aprobado</span>
+              <p class="font-semibold text-zinc-800 dark:text-zinc-100">Documento aprobado</p>
+              <p class="text-sm text-zinc-400">Plano eléctrico Proyecto Norte - hace 2 horas</p>
             </div>
           </div>
-        </div>
-        
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="flex items-center">
-            <div class="rounded-full bg-green-100 p-3">
-              <span class="material-icons text-green-600">description</span>
-            </div>
-            <div class="ml-4">
-              <h3 class="text-lg font-semibold text-gray-800">Documentos</h3>
-              <p class="text-2xl font-bold">{{ isLoading ? '...' : documentsCount }}</p>
+          <!-- Evento 2 -->
+          <div class="flex items-start gap-4 animate-fade-in delay-100">
+            <span class="material-icons text-amber-400 dark:text-amber-300 bg-white dark:bg-zinc-900 rounded-full p-2 shadow-md border border-amber-100 dark:border-amber-700">add_circle</span>
+            <div>
+              <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 mb-1">Nuevo</span>
+              <p class="font-semibold text-zinc-800 dark:text-zinc-100">Nuevo proyecto creado</p>
+              <p class="text-sm text-zinc-400">Instalación Eléctrica Edificio Central - hace 1 día</p>
             </div>
           </div>
-        </div>
-        
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="flex items-center">
-            <div class="rounded-full bg-yellow-100 p-3">
-              <span class="material-icons text-yellow-600">pending_actions</span>
-            </div>
-            <div class="ml-4">
-              <h3 class="text-lg font-semibold text-gray-800">Pendientes</h3>
-              <p class="text-2xl font-bold">{{ isLoading ? '...' : pendingCount }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Recent Projects Section -->
-      <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-800">Proyectos Recientes</h3>
-          <NuxtLink to="/projects" class="text-blue-600 hover:text-blue-800 text-sm">
-            Ver todos
-          </NuxtLink>
-        </div>
-        
-        <div v-if="isLoading" class="py-8 text-center text-gray-500">
-          <div class="animate-spin mx-auto h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-          <p class="mt-2">Cargando proyectos...</p>
-        </div>
-        
-        <div v-else-if="recentProjects.length === 0" class="py-8 text-center text-gray-500">
-          <span class="material-icons text-4xl mb-2">assignment</span>
-          <p>No hay proyectos recientes</p>
-          <button
-            v-if="userRole === 'supervisor' || userRole === 'administrativo'"
-            @click="router.push('/projects/new')"
-            class="btn btn-primary mt-3"
-          >
-            Crear nuevo proyecto
-          </button>
-        </div>
-        
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Inicio</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="project in recentProjects" :key="project.id" class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900">{{ project.nombre }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-500">{{ project.cliente }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span
-                    class="badge"
-                    :class="{
-                      'bg-green-100 text-green-800': project.estado === 'activo',
-                      'bg-blue-100 text-blue-800': project.estado === 'completado',
-                      'bg-red-100 text-red-800': project.estado === 'cancelado'
-                    }"
-                  >
-                    {{ project.estado }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-500">{{ formatDate(project.fechaInicio) }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    @click="router.push(`/projects/${project.id}`)"
-                    class="text-blue-600 hover:text-blue-900"
-                  >
-                    Detalles
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      
-      <!-- Recent Activities Section -->
-      <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-800">Actividad Reciente</h3>
-        </div>
-        
-        <div v-if="isLoading" class="py-8 text-center text-gray-500">
-          <div class="animate-spin mx-auto h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-          <p class="mt-2">Cargando actividades...</p>
-        </div>
-        
-        <div v-else-if="recentActivities.length === 0" class="py-8 text-center text-gray-500">
-          <span class="material-icons text-4xl mb-2">history</span>
-          <p>No hay actividades recientes</p>
-        </div>
-        
-        <div v-else class="space-y-4">
-          <div
-            v-for="activity in recentActivities"
-            :key="activity.id"
-            class="border-l-4 border-blue-500 bg-blue-50 p-4 rounded-r-md"
-          >
-            <div class="flex items-start">
-              <div
-                class="rounded-full bg-white p-2 mr-3"
-                :class="{
-                  'text-green-600': ['upload', 'status_update'].includes(activity.action),
-                  'text-blue-600': ['login', 'create_project', 'update_project'].includes(activity.action),
-                  'text-red-600': ['delete', 'delete_project'].includes(activity.action),
-                  'text-yellow-600': ['version_update'].includes(activity.action)
-                }"
-              >
-                <span class="material-icons text-sm">
-                  {{ getActivityIcon(activity.action) }}
-                </span>
-              </div>
+          <!-- Evento 3 -->
+          <div class="flex items-start gap-4 animate-fade-in delay-200">
+            <span class="material-icons text-cyan-400 dark:text-cyan-300 bg-white dark:bg-zinc-900 rounded-full p-2 shadow-md border border-cyan-100 dark:border-cyan-700">upload_file</span>
               <div>
-                <div class="flex items-center">
-                  <span class="font-medium text-gray-800">{{ getUserName(activity.userId) }}</span>
-                  <span class="mx-2 text-gray-500">•</span>
-                  <span class="text-sm text-gray-500">{{ formatDateTime(activity.timestamp) }}</span>
-                </div>
-                <p class="text-sm text-gray-600 mt-1">{{ getActivityDescription(activity) }}</p>
-              </div>
+              <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300 mb-1">Subido</span>
+              <p class="font-semibold text-zinc-800 dark:text-zinc-100">Documento subido</p>
+              <p class="text-sm text-zinc-400">Certificado TE1 Proyecto Sur - hace 2 días</p>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </AppLayout>
+  </MainLayout>
 </template>
 
-<script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
+<script setup>
+import { onMounted, nextTick } from 'vue'
+import MainLayout from '~/components/layout/MainLayout.vue'
+import { useAuth } from '~/composables/useAuth'
 
 definePageMeta({
-  middleware: 'auth'
+  middleware: ['auth']
 })
 
-const router = useRouter()
 const { user } = useAuth()
-const { projects, getActiveProjects, isLoading: projectsLoading } = useProjects()
-const { getDocumentsByUser, isLoading: documentsLoading } = useDocuments()
-const { activities, getRecentActivities, isLoading: activitiesLoading } = useActivities()
 
-// Computed properties
-const userRole = computed(() => user.value?.role)
+// Animación de conteo para los números de las tarjetas
+const animateCount = (element) => {
+  const target = parseInt(element.getAttribute('data-count') || '0')
+  const duration = 1500 // 1.5 seconds
+  const steps = 60 // 60 steps for smooth animation
+  const stepDuration = duration / steps
+  const increment = target / steps
+  let current = 0
+  let step = 0
 
-const welcomeMessage = computed(() => {
-  const role = userRole.value
-  const hour = new Date().getHours()
-  
-  let greeting = 'Buenos días'
-  if (hour >= 12 && hour < 18) greeting = 'Buenas tardes'
-  else if (hour >= 18) greeting = 'Buenas noches'
-  
-  if (role === 'tecnico') {
-    return `${greeting}. Aquí puedes gestionar tus documentos y proyectos asignados.`
-  } else if (role === 'administrativo') {
-    return `${greeting}. Aquí puedes administrar documentos y proyectos.`
-  } else if (role === 'supervisor') {
-    return `${greeting}. Bienvenido al panel de control.`
+  const updateCount = () => {
+    step++
+    current = Math.min(Math.round(increment * step), target)
+    element.textContent = current.toString()
+
+    if (step < steps) {
+      setTimeout(updateCount, stepDuration)
+    } else {
+      // Add bounce effect when reaching target
+      element.classList.add('animate-bounce')
+      setTimeout(() => {
+        element.classList.remove('animate-bounce')
+      }, 500)
+    }
   }
-  
-  return `${greeting}. Bienvenido a ElectroDoc.`
-})
 
-const projectsCount = computed(() => projects.value.length)
-
-const documentsCount = computed(() => {
-  // This will be calculated when we fetch documents
-  return user.value?.documentsCount || 0
-})
-
-const pendingCount = computed(() => {
-  // This will be calculated when we fetch documents
-  return user.value?.pendingCount || 0
-})
-
-const recentProjects = computed(() => {
-  return projects.value.slice(0, 5)
-})
-
-const recentActivities = computed(() => {
-  return activities.value.slice(0, 5)
-})
-
-const isLoading = computed(() => {
-  return projectsLoading.value || documentsLoading.value || activitiesLoading.value
-})
-
-// Helper functions
-const formatDate = (date: Date) => {
-  return format(date, 'dd MMM yyyy', { locale: es })
+  updateCount()
 }
 
-const formatDateTime = (date: Date) => {
-  return format(date, 'dd MMM yyyy, HH:mm', { locale: es })
+onMounted(() => {
+  nextTick(() => {
+    document.querySelectorAll('.animate-count').forEach(el => {
+      if (el instanceof HTMLElement) {
+        animateCount(el)
 }
-
-const getActivityIcon = (action: string) => {
-  switch (action) {
-    case 'login':
-      return 'login'
-    case 'logout':
-      return 'logout'
-    case 'create_project':
-      return 'add_circle'
-    case 'update_project':
-      return 'edit'
-    case 'delete_project':
-      return 'delete'
-    case 'assign_technician':
-      return 'person_add'
-    case 'remove_technician':
-      return 'person_remove'
-    case 'upload':
-      return 'upload_file'
-    case 'download':
-      return 'download'
-    case 'status_update':
-      return 'update'
-    case 'delete':
-      return 'delete'
-    case 'version_update':
-      return 'history'
-    default:
-      return 'info'
-  }
-}
-
-const getUserName = (userId: string) => {
-  // In a real app, we would fetch the user name from the database
-  // For now, we'll just return the user ID
-  if (user.value && userId === user.value.id) {
-    return user.value.nombre
-  }
-  return 'Usuario'
-}
-
-const getActivityDescription = (activity: any) => {
-  switch (activity.action) {
-    case 'login':
-      return 'Inició sesión en el sistema'
-    case 'logout':
-      return 'Cerró sesión'
-    case 'create_project':
-      return `Creó un nuevo proyecto: ${activity.details}`
-    case 'update_project':
-      return `Actualizó el proyecto: ${activity.details}`
-    case 'delete_project':
-      return `Eliminó el proyecto: ${activity.details}`
-    case 'assign_technician':
-      return activity.details
-    case 'remove_technician':
-      return activity.details
-    case 'upload':
-      return `Subió un documento: ${activity.details}`
-    case 'download':
-      return `Descargó un documento: ${activity.details}`
-    case 'status_update':
-      return activity.details
-    case 'delete':
-      return `Eliminó un documento: ${activity.details}`
-    case 'version_update':
-      return activity.details
-    default:
-      return activity.details || 'Realizó una acción'
-  }
-}
-
-// Load data on component mount
-onMounted(async () => {
-  await getActiveProjects()
-  await getRecentActivities()
-  
-  // Calculate document counts
-  if (user.value) {
-    const documents = await getDocumentsByUser(user.value.id)
-    user.value.documentsCount = documents.length
-    user.value.pendingCount = documents.filter(doc => doc.estado === 'pendiente').length
-  }
+    })
+  })
+  console.log('Dashboard cargado para usuario:', user.value?.nombre)
 })
-</script> 
+</script>
+
+<style scoped>
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.7s cubic-bezier(.4,0,.2,1) both;
+}
+
+.animate-fade-in.delay-100 { animation-delay: 0.1s; }
+.animate-fade-in.delay-200 { animation-delay: 0.2s; }
+.animate-fade-in.delay-300 { animation-delay: 0.3s; }
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-bounce {
+  animation: bounce 0.5s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(.4,0,.2,1) infinite;
+}
+</style> 

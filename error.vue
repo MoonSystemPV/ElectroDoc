@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import ErrorDisplay from '~/components/ErrorDisplay.vue'
+import ErrorDisplay from '~/components/ui/ErrorDisplay.vue'
 
 defineProps({
   error: Object

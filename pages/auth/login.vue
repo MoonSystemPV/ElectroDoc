@@ -6,29 +6,29 @@
           <img src="/images/Logo.png" alt="Logo ElectroDoc" class="w-full h-full object-cover" />
         </div>
       </div>
-      <span class="text-3xl font-bold text-pink-500 dark:text-pink-400 mb-2 tracking-tight">Iniciar Sesión</span>
+      <span class="text-3xl font-extrabold mb-8 text-blue-500 dark:text-white tracking-tight">Iniciar Sesión</span>
       <form class="w-full flex flex-col gap-6" @submit.prevent="handleLogin">
         <div>
           <label class="block text-zinc-700 dark:text-zinc-200 mb-2">Correo electrónico</label>
-          <input v-model="email" type="email" class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-pink-200 dark:border-pink-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-400 outline-none transition" />
+          <input v-model="email" type="email" class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-blue-200 dark:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition" />
         </div>
         <div>
           <label class="block text-zinc-700 dark:text-zinc-200 mb-2">Contraseña</label>
           <div class="relative">
-            <input :type="showPassword ? 'text' : 'password'" v-model="password" class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-pink-200 dark:border-pink-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-400 outline-none transition pr-12" />
-            <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-300 hover:text-pink-400 dark:hover:text-pink-300 focus:outline-none">
+            <input :type="showPassword ? 'text' : 'password'" v-model="password" class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-blue-200 dark:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition pr-12" />
+            <button type="button" @click="showPassword = !showPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-300 hover:text-blue-400 dark:hover:text-blue-300 focus:outline-none">
               <span class="material-icons">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
             </button>
           </div>
         </div>
         <div class="flex items-center justify-between">
           <label class="flex items-center gap-2 text-zinc-700 dark:text-zinc-200 text-sm">
-            <input type="checkbox" v-model="rememberMe" class="rounded border-zinc-300 dark:border-zinc-600 focus:ring-pink-400" />
+            <input type="checkbox" v-model="rememberMe" class="rounded border-zinc-300 dark:border-zinc-600 focus:ring-blue-400" />
             Recuérdame
           </label>
-          <NuxtLink to="/auth/reset-password" class="text-pink-500 dark:text-pink-400 hover:underline text-sm">¿Olvidaste tu contraseña?</NuxtLink>
+          <NuxtLink to="/auth/reset-password" class="text-blue-500 dark:text-blue-400 hover:underline text-sm">¿Olvidaste tu contraseña?</NuxtLink>
         </div>
-        <button type="submit" class="bg-pink-500 hover:bg-pink-400 text-white font-semibold py-3 rounded-xl shadow transition">Entrar</button>
+        <button type="submit" class="bg-blue-500 hover:bg-blue-400 text-white font-semibold py-3 rounded-xl shadow transition">Entrar</button>
         <div class="flex items-center gap-2 my-2">
           <div class="flex-1 h-px bg-zinc-200 dark:bg-zinc-700"></div>
           <span class="text-zinc-400 dark:text-zinc-500 text-xs">o</span>
