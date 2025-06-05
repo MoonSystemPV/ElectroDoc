@@ -6,7 +6,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail
 } from 'firebase/auth'
 import { 
   doc, 
@@ -158,6 +159,36 @@ export function useAuth() {
       return false;
     } finally {
       isLoading.value = false;
+    }
+  }
+  
+  /**
+   * Solicita un restablecimiento de contraseña
+   */
+  const requestPasswordReset = async (email: string) => {
+    isLoading.value = true
+    error.value = null
+    
+    try {
+      await sendPasswordResetEmail(auth, email)
+      console.log('Email de restablecimiento enviado a:', email)
+      return true
+    } catch (err: any) {
+      console.error('Error al solicitar restablecimiento de contraseña:', err)
+      
+      if (err.code === 'auth/user-not-found') {
+        error.value = 'No existe una cuenta con este correo electrónico'
+      } else if (err.code === 'auth/invalid-email') {
+        error.value = 'El correo electrónico no es válido'
+      } else if (err.code === 'auth/too-many-requests') {
+        error.value = 'Demasiadas solicitudes. Intente más tarde'
+      } else {
+        error.value = `Error al enviar correo de restablecimiento: ${err.message}`
+      }
+      
+      return false
+    } finally {
+      isLoading.value = false
     }
   }
   
@@ -335,6 +366,7 @@ export function useAuth() {
     error,
     initAuth,
     login,
+    requestPasswordReset,
     createUser,
     getAllUsers,
     logout,

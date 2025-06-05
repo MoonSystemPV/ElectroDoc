@@ -1,97 +1,122 @@
 <template>
-  <div class="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-900">ElectroDoc</h1>
-        <h2 class="mt-2 text-sm text-gray-600">Sistema de Gestión Documental para Proyectos Eléctricos</h2>
+  <div class="min-h-screen flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 transition-colors duration-300">
+    <div class="bg-white dark:bg-zinc-800 p-10 rounded-2xl shadow-2xl w-full max-w-md flex flex-col items-center gap-6">
+      <div class="flex flex-col items-center mb-2">
+        <div class="h-28 w-28 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-lg overflow-hidden">
+          <img src="/images/Logo.png" alt="Logo ElectroDoc" class="w-full h-full object-cover" />
+        </div>
       </div>
+      <span class="text-3xl font-extrabold mb-4 text-blue-500 dark:text-white tracking-tight">Recuperar Contraseña</span>
       
-      <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <div class="mb-6 text-center">
-            <h2 class="text-xl font-bold text-gray-900">Restablecer Contraseña</h2>
-            <p class="mt-1 text-sm text-gray-500">Ingresa tu correo electrónico para recibir un enlace de restablecimiento</p>
+      <!-- Mensaje de éxito -->
+      <div v-if="successMessage" class="w-full bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded-lg shadow-md animate-pulse-once">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <span class="material-icons text-green-500 mr-2">check_circle</span>
           </div>
-          
-          <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            {{ successMessage }}
-            <div class="mt-2">
-              <NuxtLink to="/login" class="text-blue-600 hover:text-blue-800 font-medium">
-                Volver al inicio de sesión
+          <div class="ml-2">
+            <p class="font-bold">¡Correo enviado!</p>
+            <p>{{ successMessage }}</p>
+            <div class="mt-4">
+              <NuxtLink to="/auth/login" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition">
+                <span class="material-icons mr-2 text-sm">arrow_back</span>
+                Volver a iniciar sesión
               </NuxtLink>
             </div>
           </div>
-          
-          <div v-else>
-            <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {{ error }}
-            </div>
-            
-            <form @submit.prevent="requestPasswordReset" class="space-y-4">
-              <div>
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
-                <input
-                  id="email"
-                  v-model="email"
-                  type="email"
-                  required
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="correo@ejemplo.com"
-                />
-              </div>
-              
-              <div>
-                <button
-                  type="submit"
-                  class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  :disabled="isLoading"
-                >
-                  <span v-if="isLoading" class="flex items-center">
-                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Enviando solicitud...
-                  </span>
-                  <span v-else>Enviar enlace de restablecimiento</span>
-                </button>
-              </div>
-              
-              <div class="text-center mt-4">
-                <NuxtLink to="/login" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                  Volver al inicio de sesión
-                </NuxtLink>
-              </div>
-            </form>
-          </div>
         </div>
       </div>
+      
+      <!-- Formulario de recuperación -->
+      <template v-else>
+        <!-- Mensaje de error -->
+        <div v-if="error" class="w-full bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-lg shadow-md animate-pulse-once">
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <span class="material-icons text-red-500 mr-2">error</span>
+            </div>
+            <div class="ml-2">
+              <p class="font-bold">Error</p>
+              <p>{{ error }}</p>
+            </div>
+          </div>
+        </div>
+        
+        <p class="text-zinc-500 dark:text-zinc-300 text-center mb-4">
+          Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+        </p>
+        
+        <form @submit.prevent="handleResetPassword" class="w-full flex flex-col gap-6">
+          <div>
+            <label class="block text-zinc-700 dark:text-zinc-200 mb-2">Correo electrónico</label>
+            <input
+              v-model="email"
+              type="email"
+              required
+              class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-blue-200 dark:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition"
+              :class="{ 'border-red-500 dark:border-red-400': error }"
+              placeholder="tu@correo.com"
+            />
+          </div>
+          
+          <button
+            type="submit"
+            class="bg-blue-500 hover:bg-blue-400 text-white font-semibold py-3 rounded-xl shadow transition flex justify-center items-center"
+            :class="{ 'opacity-75 cursor-not-allowed': isLoading }"
+            :disabled="isLoading"
+          >
+            <span v-if="isLoading" class="animate-spin mr-3">
+              <span class="material-icons">refresh</span>
+            </span>
+            {{ isLoading ? 'Enviando...' : 'Enviar enlace de recuperación' }}
+          </button>
+          
+          <div class="text-center mt-4">
+            <NuxtLink to="/auth/login" class="text-blue-500 dark:text-blue-400 hover:underline">
+              Volver a iniciar sesión
+            </NuxtLink>
+          </div>
+        </form>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useAuth } from '~/composables/useAuth'
 
-definePageMeta({
-  middleware: 'guest',
-  layout: 'blank'
-})
+// No necesitamos definePageMeta porque ya no tenemos ese middleware "guest" 
+// y no usamos un layout específico
 
 // Composables
-const { requestPasswordReset: resetPassword, isLoading, error } = useAuth()
+const { requestPasswordReset, isLoading, error } = useAuth()
 
 // State
 const email = ref('')
 const successMessage = ref('')
 
 // Methods
-const requestPasswordReset = async () => {
-  const success = await resetPassword(email.value)
+const handleResetPassword = async () => {
+  if (!email.value) return
+  
+  const success = await requestPasswordReset(email.value)
   
   if (success) {
-    successMessage.value = 'Se ha enviado un enlace de restablecimiento de contraseña a tu correo electrónico.'
+    successMessage.value = `Se ha enviado un enlace a ${email.value} para restablecer tu contraseña.`
     email.value = ''
   }
 }
 </script>
+
+<style scoped>
+@keyframes pulse-once {
+  0% { opacity: 0; transform: scale(0.95); }
+  70% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-pulse-once {
+  animation: pulse-once 0.5s ease-out forwards;
+}
+</style>

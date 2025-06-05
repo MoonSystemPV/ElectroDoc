@@ -10,7 +10,7 @@
     <div class="min-h-screen flex items-center justify-center bg-gradient-to-tr from-slate-900 via-blue-900 to-indigo-800 p-4">
       <div class="text-center">
         <p class="text-white text-xl mb-4">Debe iniciar sesión para acceder a esta página</p>
-        <NuxtLink to="/login" class="px-6 py-3 bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium rounded-lg border border-white/20 shadow-lg transition-all">
+        <NuxtLink to="/auth/login" class="px-6 py-3 bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium rounded-lg border border-white/20 shadow-lg transition-all">
           Ir a iniciar sesión
         </NuxtLink>
       </div>
@@ -29,9 +29,9 @@ const authStore = useAuthStore()
 
 // Check if current route is an auth route (login, register, etc.)
 const isAuthRoute = computed(() => {
-  return route.path.startsWith('/login') || 
-         route.path.startsWith('/register') || 
-         route.path.startsWith('/forgot-password') ||
+  return route.path.startsWith('/auth/login') || 
+         route.path.startsWith('/auth/register') || 
+         route.path.startsWith('/auth/reset-password') ||
          route.path === '/'
 })
 

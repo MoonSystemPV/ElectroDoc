@@ -203,6 +203,11 @@
 import { ref, computed, onMounted } from 'vue'
 import MainLayout from '~/components/layout/MainLayout.vue'
 
+// Aplicar middleware de autenticación
+definePageMeta({
+  middleware: ['auth']
+})
+
 // Estado
 const isLoading = ref(false)
 const error = ref(null)

@@ -195,7 +195,7 @@ const updateTheme = () => {
 
 const handleLogout = async () => {
   await logout()
-  router.push('/login')
+  router.push('/auth/login')
 }
 
 // Get user initials
