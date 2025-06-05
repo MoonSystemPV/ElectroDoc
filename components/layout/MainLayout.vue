@@ -1,23 +1,44 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-zinc-900">
     <div class="flex h-screen overflow-hidden">
-      <!-- Sidebar - Fixed -->
-      <div class="hidden md:flex md:flex-shrink-0 md:fixed md:inset-y-0 md:flex-col">
-        <div class="flex flex-col w-72 h-full">
+      <!-- Mobile Sidebar - Overlay (se muestra cuando isMobileMenuOpen es true) -->
+      <div v-if="isMobileMenuOpen" 
+           class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" 
+           @click="isMobileMenuOpen = false">
+      </div>
+      
+      <!-- Sidebar - Desktop (md+) fixed, Mobile slide-over -->
+      <div :class="[
+             'transition-all duration-300 z-50',
+             'fixed inset-y-0 left-0 w-72 flex flex-col',
+             isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+           ]">
+        <div class="flex flex-col w-full h-full">
           <div class="flex flex-col flex-grow pt-8 pb-4 overflow-y-auto bg-gradient-to-b from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 border-r border-gray-200 dark:border-zinc-700">
-            <!-- Logo Container -->
-            <div class="flex items-center justify-center mb-8">
+            <!-- Close button - Mobile only -->
+            <div class="flex items-center justify-between px-4 md:hidden">
+              <div class="h-16 w-16 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-lg overflow-hidden">
+                <img src="/images/Logo.png" alt="Logo ElectroDoc" class="w-full h-full object-cover" />
+              </div>
+              <button @click="isMobileMenuOpen = false" class="p-2 rounded-md text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+            
+            <!-- Logo Container - Desktop only -->
+            <div class="hidden md:flex items-center justify-center mb-8">
               <div class="h-28 w-28 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-lg overflow-hidden">
                 <img src="/images/Logo.png" alt="Logo ElectroDoc" class="w-full h-full object-cover" />
               </div>
             </div>
 
             <!-- Navigation -->
-            <nav class="mt-8 flex-1 px-4 space-y-2">
+            <nav class="mt-6 flex-1 px-4 space-y-2">
               <NuxtLink 
                 to="/dashboard" 
                 class="group flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:scale-105"
                 active-class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                @click="isMobileMenuOpen = false"
               >
                 <span class="material-icons mr-4 text-2xl text-blue-500 dark:text-blue-400 group-hover:animate-pulse">dashboard</span>
                 Dashboard
@@ -27,6 +48,7 @@
                 to="/projects" 
                 class="group flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:scale-105"
                 active-class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                @click="isMobileMenuOpen = false"
               >
                 <span class="material-icons mr-4 text-2xl text-blue-500 dark:text-blue-400 group-hover:animate-pulse">engineering</span>
                 Proyectos
@@ -36,6 +58,7 @@
                 to="/documents" 
                 class="group flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:scale-105"
                 active-class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                @click="isMobileMenuOpen = false"
               >
                 <span class="material-icons mr-4 text-2xl text-blue-500 dark:text-blue-400 group-hover:animate-pulse">description</span>
                 Documentos
@@ -45,6 +68,7 @@
                 to="/profile" 
                 class="group flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:scale-105"
                 active-class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                @click="isMobileMenuOpen = false"
               >
                 <span class="material-icons mr-4 text-2xl text-blue-500 dark:text-blue-400 group-hover:animate-pulse">person</span>
                 Perfil
@@ -60,6 +84,7 @@
                     to="/admin" 
                     class="group flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:scale-105"
                     active-class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                    @click="isMobileMenuOpen = false"
                   >
                     <span class="material-icons mr-4 text-2xl text-blue-500 dark:text-blue-400 group-hover:animate-pulse">settings</span>
                     Usuarios
@@ -92,7 +117,7 @@
             </div>
 
             <!-- Logout button -->
-            <div class="px-4 mt-4">
+            <div class="px-4 mt-4 mb-6">
               <button
                 @click="handleLogout"
                 class="w-full flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 hover:scale-105"
@@ -108,15 +133,19 @@
       <!-- Main content - With offset for fixed sidebar -->
       <div class="flex flex-col flex-1 md:pl-72">
         <!-- Top header -->
-        <header class="bg-white dark:bg-zinc-800 shadow-sm">
+        <header class="bg-white dark:bg-zinc-800 shadow-sm sticky top-0 z-30">
           <div class="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
             <!-- Mobile menu button -->
-            <button type="button" class="md:hidden text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300">
+            <button 
+              type="button" 
+              class="md:hidden text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
+              @click="isMobileMenuOpen = true"
+            >
               <span class="material-icons">menu</span>
             </button>
 
             <!-- Search -->
-            <div class="flex-1 max-w-lg px-4 lg:px-8">
+            <div class="flex-1 max-w-lg px-2 lg:px-8 hidden sm:block">
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <span class="material-icons text-gray-400">search</span>
@@ -165,8 +194,18 @@ import { useRouter } from 'vue-router'
 const { user, logout } = useAuth()
 const router = useRouter()
 
+// Mobile menu state
+const isMobileMenuOpen = ref(false)
+
 // Dark mode
 const isDarkMode = ref(false)
+
+// Handle resize to auto-close mobile menu on larger screens
+const handleResize = () => {
+  if (window.innerWidth >= 768 && isMobileMenuOpen.value) {
+    isMobileMenuOpen.value = false
+  }
+}
 
 onMounted(() => {
   // Check for saved theme preference or use system preference
@@ -177,6 +216,14 @@ onMounted(() => {
     isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
   }
   updateTheme()
+  
+  // Add resize listener
+  window.addEventListener('resize', handleResize)
+  
+  // Clean up
+  return () => {
+    window.removeEventListener('resize', handleResize)
+  }
 })
 
 const toggleDarkMode = () => {
@@ -194,6 +241,7 @@ const updateTheme = () => {
 }
 
 const handleLogout = async () => {
+  isMobileMenuOpen.value = false
   await logout()
   router.push('/auth/login')
 }
@@ -214,7 +262,7 @@ const isAdmin = computed(() => {
 })
 </script>
 
-<style>
+<style scoped>
 @keyframes spin-slow {
   from {
     transform: rotate(0deg);
@@ -226,5 +274,17 @@ const isAdmin = computed(() => {
 
 .animate-spin-slow {
   animation: spin-slow 8s linear infinite;
+}
+
+/* Para mejorar la experiencia en dispositivos móviles */
+@media (max-width: 768px) {
+  .scrollbar-hide {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
 }
 </style>

@@ -25,65 +25,131 @@
           <p class="text-lg text-zinc-500 dark:text-zinc-400">No se encontraron documentos</p>
         </div>
         
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
-            <thead>
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Documento</th>
-                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Proyecto</th>
-                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Estado</th>
-                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Última Actualización</th>
-                <th class="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-              <tr v-for="doc in filteredDocuments" :key="doc.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-700 transition">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center gap-3">
-                    <span class="material-icons text-xl"
+        <div v-else>
+          <!-- Vista de tabla para pantallas medianas y grandes -->
+          <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+              <thead>
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Documento</th>
+                  <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Proyecto</th>
+                  <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Estado</th>
+                  <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Última Actualización</th>
+                  <th class="px-6 py-3"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <tr v-for="doc in filteredDocuments" :key="doc.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-700 transition">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center gap-3">
+                      <span class="material-icons text-xl"
+                        :class="{
+                          'text-blue-500': doc.type === 'pdf',
+                          'text-green-500': doc.type === 'excel',
+                          'text-yellow-500': doc.type === 'word'
+                        }">
+                        {{ getDocumentIcon(doc.type) }}
+                      </span>
+                      <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ doc.name }}</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-zinc-700 dark:text-zinc-100">{{ doc.project }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold"
                       :class="{
-                        'text-blue-500': doc.type === 'pdf',
-                        'text-green-500': doc.type === 'excel',
-                        'text-yellow-500': doc.type === 'word'
+                        'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': doc.status === 'approved',
+                        'bg-yellow-100 dark:bg-yellow-500 text-yellow-700 dark:text-white': doc.status === 'pending',
+                        'bg-red-100 dark:bg-red-500 text-red-700 dark:text-white': doc.status === 'rejected',
+                        'bg-blue-100 dark:bg-blue-500 text-blue-700 dark:text-white': doc.status === 'draft'
                       }">
-                      {{ getDocumentIcon(doc.type) }}
+                      {{ getStatusText(doc.status) }}
                     </span>
-                    <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ doc.name }}</span>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-zinc-700 dark:text-zinc-100">{{ doc.project }}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-300">{{ formatDate(doc.updatedAt) }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div class="flex justify-end gap-2">
+                      <button @click="editDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                        <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">edit</span>
+                      </button>
+                      <button @click="downloadDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                        <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">download</span>
+                      </button>
+                      <button @click="showDocumentOptions(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                        <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">more_vert</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Vista de tarjetas para dispositivos móviles -->
+          <div class="md:hidden space-y-4">
+            <div v-for="doc in filteredDocuments" :key="doc.id" class="bg-white dark:bg-zinc-900 rounded-lg shadow p-4">
+              <div class="flex justify-between items-start mb-3">
+                <div class="flex items-center gap-3">
+                  <span class="material-icons text-xl"
                     :class="{
-                      'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': doc.status === 'approved',
-                      'bg-yellow-100 dark:bg-yellow-500 text-yellow-700 dark:text-white': doc.status === 'pending',
-                      'bg-red-100 dark:bg-red-500 text-red-700 dark:text-white': doc.status === 'rejected',
-                      'bg-blue-100 dark:bg-blue-500 text-blue-700 dark:text-white': doc.status === 'draft'
+                      'text-blue-500': doc.type === 'pdf',
+                      'text-green-500': doc.type === 'excel',
+                      'text-yellow-500': doc.type === 'word'
                     }">
-                    {{ getStatusText(doc.status) }}
+                    {{ getDocumentIcon(doc.type) }}
                   </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-300">{{ formatDate(doc.updatedAt) }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div class="flex justify-end gap-2">
-                    <button @click="editDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
-                      <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">edit</span>
-                    </button>
-                    <button @click="downloadDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
-                      <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">download</span>
-                    </button>
-                    <button @click="showDocumentOptions(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
-                      <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">more_vert</span>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ doc.name }}</span>
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-semibold"
+                  :class="{
+                    'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': doc.status === 'approved',
+                    'bg-yellow-100 dark:bg-yellow-500 text-yellow-700 dark:text-white': doc.status === 'pending',
+                    'bg-red-100 dark:bg-red-500 text-red-700 dark:text-white': doc.status === 'rejected',
+                    'bg-blue-100 dark:bg-blue-500 text-blue-700 dark:text-white': doc.status === 'draft'
+                  }">
+                  {{ getStatusText(doc.status) }}
+                </span>
+              </div>
+              
+              <div class="space-y-1 mb-3">
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                  <span class="font-medium text-zinc-700 dark:text-zinc-300">Proyecto:</span> {{ doc.project }}
+                </p>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                  <span class="font-medium text-zinc-700 dark:text-zinc-300">Actualizado:</span> {{ formatDate(doc.updatedAt) }}
+                </p>
+              </div>
+              
+              <div class="flex justify-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                <button @click="editDocument(doc)" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <span class="material-icons text-zinc-500 dark:text-zinc-400">edit</span>
+                </button>
+                <button @click="downloadDocument(doc)" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <span class="material-icons text-zinc-500 dark:text-zinc-400">download</span>
+                </button>
+                <button @click="showDocumentOptions(doc)" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                  <span class="material-icons text-zinc-500 dark:text-zinc-400">more_vert</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         
         <!-- Paginación -->
         <div class="flex items-center justify-between border-t border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 sm:px-6 mt-4 rounded-xl">
+          <!-- Versión móvil de paginación -->
+          <div class="flex items-center justify-between w-full sm:hidden">
+            <button class="relative inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+              Anterior
+            </button>
+            <div class="text-sm text-zinc-700 dark:text-zinc-300">
+              <span>Página <span class="font-medium">1</span> de <span class="font-medium">3</span></span>
+            </div>
+            <button class="relative inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+              Siguiente
+            </button>
+          </div>
+          
+          <!-- Versión desktop de paginación -->
           <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
               <p class="text-sm text-zinc-700 dark:text-zinc-300">
@@ -103,7 +169,7 @@
                 </a>
               </nav>
             </div>
-                      </div>
+          </div>
         </div>
       </div>
 

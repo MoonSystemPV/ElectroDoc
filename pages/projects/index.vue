@@ -77,6 +77,20 @@
 
         <!-- Paginación -->
         <div class="flex items-center justify-between border-t border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-4 py-3 sm:px-6 mt-6 rounded-xl">
+          <!-- Versión móvil de paginación -->
+          <div class="flex items-center justify-between w-full sm:hidden">
+            <button class="relative inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+              Anterior
+            </button>
+            <div class="text-sm text-zinc-700 dark:text-zinc-300">
+              <span>Página <span class="font-medium">1</span> de <span class="font-medium">3</span></span>
+            </div>
+            <button class="relative inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700">
+              Siguiente
+            </button>
+          </div>
+          
+          <!-- Versión desktop de paginación -->
           <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
             <div>
               <p class="text-sm text-zinc-700 dark:text-zinc-300">

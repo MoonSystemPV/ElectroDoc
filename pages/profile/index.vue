@@ -1,11 +1,47 @@
 <template>
   <MainLayout>
-    <div class="p-6">
-      <h1 class="text-3xl font-extrabold mb-8 text-blue-500 dark:text-white tracking-tight">Configuración</h1>
+    <div class="p-4 md:p-6">
+      <h1 class="text-3xl font-extrabold mb-6 text-blue-500 dark:text-white tracking-tight">Configuración</h1>
       
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Sidebar de navegación -->
-        <div class="bg-white dark:bg-zinc-800 p-4 rounded-lg shadow">
+        <!-- Sidebar de navegación - Versión móvil -->
+        <div class="md:hidden flex overflow-x-auto pb-3 scrollbar-hide">
+          <button 
+            @click="activeTab = 'profile'" 
+            class="px-4 py-2 rounded-md transition-colors whitespace-nowrap mr-2 flex items-center"
+            :class="activeTab === 'profile' ? 'bg-blue-50 dark:bg-zinc-700 text-blue-600 dark:text-blue-300' : 'bg-white dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-zinc-100'"
+          >
+            <span class="material-icons mr-2">person</span>
+            Perfil
+          </button>
+          <button 
+            @click="activeTab = 'security'" 
+            class="px-4 py-2 rounded-md transition-colors whitespace-nowrap mr-2 flex items-center"
+            :class="activeTab === 'security' ? 'bg-blue-50 dark:bg-zinc-700 text-blue-600 dark:text-blue-300' : 'bg-white dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-zinc-100'"
+          >
+            <span class="material-icons mr-2">security</span>
+            Seguridad
+          </button>
+          <button 
+            @click="activeTab = 'notifications'" 
+            class="px-4 py-2 rounded-md transition-colors whitespace-nowrap mr-2 flex items-center"
+            :class="activeTab === 'notifications' ? 'bg-blue-50 dark:bg-zinc-700 text-blue-600 dark:text-blue-300' : 'bg-white dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-zinc-100'"
+          >
+            <span class="material-icons mr-2">notifications</span>
+            Notificaciones
+          </button>
+          <button 
+            @click="activeTab = 'appearance'" 
+            class="px-4 py-2 rounded-md transition-colors whitespace-nowrap flex items-center"
+            :class="activeTab === 'appearance' ? 'bg-blue-50 dark:bg-zinc-700 text-blue-600 dark:text-blue-300' : 'bg-white dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 dark:text-zinc-100'"
+          >
+            <span class="material-icons mr-2">palette</span>
+            Apariencia
+          </button>
+        </div>
+        
+        <!-- Sidebar de navegación - Versión desktop -->
+        <div class="hidden md:block bg-white dark:bg-zinc-800 p-4 rounded-lg shadow">
           <ul class="space-y-2">
             <li>
               <button 
@@ -405,4 +441,16 @@ onMounted(() => {
     profile.value.role = user.value.role || 'supervisor'
   }
 })
-</script> 
+</script>
+
+<style scoped>
+/* Para ocultar la barra de scroll en dispositivos móviles */
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+</style> 
