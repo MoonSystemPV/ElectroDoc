@@ -20,10 +20,12 @@ import {
   updateDoc
 } from 'firebase/firestore'
 import { auth, db } from '~/utils/firebase'
+import { useApi } from './useApi'
 
 export function useAuth() {
   const authStore = useAuthStore()
   const router = useRouter()
+  const api = useApi()
   
   // Local state for loading and error handling
   const isLoading = ref(false)
@@ -195,37 +197,20 @@ export function useAuth() {
   /**
    * Crea un nuevo usuario por el administrador usando el backend
    */
-  const createUser = async (userData: {nombre: string; email: string; role: string; password: string}) => {
-    if (!isAdmin.value) {
-      error.value = 'Solo los administradores pueden crear usuarios';
-      return false;
-    }
-
-    isLoading.value = true;
-    error.value = null;
-
+  const createUser = async (userData: any) => {
     try {
-      // Llama a tu backend en vez de usar createUserWithEmailAndPassword
-      const response = await fetch('http://localhost:4000/create-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        console.log('Usuario creado exitosamente:', data.uid);
-        return true;
-      } else {
-        error.value = data.error || 'Error al crear usuario';
-        return false;
+      isLoading.value = true
+      error.value = null
+      const result = await api.createUser(userData)
+      if (!result.success) {
+        throw new Error(result.error)
       }
-    } catch (err) {
-      console.error('Error al crear usuario:', err);
-      error.value = 'Error al crear usuario';
-      return false;
+      return result
+    } catch (err: any) {
+      error.value = err.message
+      throw err
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
   }
   
@@ -322,37 +307,20 @@ export function useAuth() {
   /**
    * Eliminar usuario completamente (Auth + Firestore)
    */
-  const deleteUser = async (userId: string) => {
-    if (!isAdmin.value) {
-      error.value = 'Solo los administradores pueden eliminar usuarios';
-      return false;
-    }
-    
-    isLoading.value = true;
-    error.value = null;
-    
+  const deleteUser = async (uid: string) => {
     try {
-      // Llama al backend para eliminar de Auth y Firestore
-      const response = await fetch('http://localhost:4000/delete-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: userId })
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        console.log('Usuario eliminado completamente:', userId);
-        return true;
-      } else {
-        error.value = data.error || 'Error al eliminar usuario';
-        return false;
+      isLoading.value = true
+      error.value = null
+      const result = await api.deleteUser(uid)
+      if (!result.success) {
+        throw new Error(result.error)
       }
-    } catch (err) {
-      console.error('Error al eliminar usuario:', err);
-      error.value = 'Error al eliminar usuario';
-      return false;
+      return result
+    } catch (err: any) {
+      error.value = err.message
+      throw err
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
   }
 

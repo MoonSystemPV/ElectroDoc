@@ -7,6 +7,11 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@pinia/nuxt'
   ],
+  runtimeConfig: {
+    public: {
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:4000'
+    }
+  },
   tailwindcss: {
     cssPath: '~/assets/css/main.css',
     configPath: 'tailwind.config.js',
