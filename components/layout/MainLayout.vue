@@ -45,6 +45,16 @@
               </NuxtLink>
 
               <NuxtLink 
+                to="/panel" 
+                class="group flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:scale-105"
+                active-class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                @click="isMobileMenuOpen = false"
+              >
+                <span class="material-icons mr-4 text-2xl text-blue-500 dark:text-blue-400 group-hover:animate-pulse">task</span>
+                Tareas
+              </NuxtLink>
+
+              <NuxtLink 
                 to="/projects" 
                 class="group flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:scale-105"
                 active-class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
