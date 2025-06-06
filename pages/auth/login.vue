@@ -97,7 +97,7 @@ const { login, isLoading, error: authError, initAuth } = useAuth()
 const { showToast } = useToast()
 
 // Form data
-const email = ref('alexanderviveros9@gmail.com')
+const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
 const showPassword = ref(false)
