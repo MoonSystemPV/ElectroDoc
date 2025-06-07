@@ -8,7 +8,8 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
-  signInWithPopup
+  signInWithPopup,
+  updatePassword
 } from 'firebase/auth'
 import {
   doc,
@@ -74,6 +75,7 @@ export function useAuth() {
             const userData = userDoc.data() || {};
             authStore.setUser({
               id: firebaseUser.uid,
+              uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               nombre: userData.nombre || firebaseUser.displayName || 'Usuario',
               role: userData.role || 'tecnico',
@@ -200,17 +202,27 @@ export function useAuth() {
    * Crea un nuevo usuario por el administrador usando el backend
    */
   const createUser = async (userData: any) => {
+    isLoading.value = true
+    error.value = null
     try {
-      isLoading.value = true
-      error.value = null
-      const result = await api.createUser(userData)
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-      return result
+      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password)
+      const uid = userCredential.user.uid
+      
+      // Crear el documento del usuario en Firestore
+      await setDoc(doc(db, 'users', uid), {
+        uid,
+        nombre: userData.nombre,
+        email: userData.email,
+        role: userData.role,
+        activo: userData.activo,
+        fechaCreacion: new Date()
+      })
+      
+      return true
     } catch (err: any) {
+      console.error('Error al crear usuario:', err)
       error.value = err.message
-      throw err
+      return false
     } finally {
       isLoading.value = false
     }
@@ -220,36 +232,20 @@ export function useAuth() {
    * Obtiene todos los usuarios desde Firestore
    */
   const getAllUsers = async () => {
-    if (!isAdmin.value) {
-      error.value = 'Solo los administradores pueden listar usuarios';
-      return [] as User[];
-    }
-
-    isLoading.value = true;
-    error.value = null;
-
+    isLoading.value = true
+    error.value = null
     try {
-      const usersSnapshot = await getDocs(collection(db, 'users'));
-      const users: User[] = [];
-
-      usersSnapshot.forEach((docSnap) => {
-        const userData = docSnap.data();
-        users.push({
-          id: docSnap.id,
-          email: userData.email,
-          nombre: userData.nombre,
-          role: userData.role,
-          fechaCreacion: userData.fechaCreacion?.toDate ? userData.fechaCreacion.toDate() : new Date(userData.fechaCreacion)
-        });
-      });
-
-      return users;
-    } catch (err) {
-      console.error('Error al obtener usuarios:', err);
-      error.value = 'Error al obtener la lista de usuarios';
-      return [] as User[];
+      const usersSnapshot = await getDocs(collection(db, 'users'))
+      // Solo usuarios que tengan los campos requeridos (por ejemplo, uid, email, nombre)
+      return usersSnapshot.docs
+        .map(doc => ({ uid: doc.id, ...doc.data() }))
+        .filter(user => (user as any).uid && (user as any).email && (user as any).nombre)
+    } catch (err: any) {
+      console.error('Error al obtener usuarios:', err)
+      error.value = err.message
+      return []
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
   }
 
@@ -282,27 +278,27 @@ export function useAuth() {
   /**
    * Change user password (para implementar)
    */
-  const changePassword = async (userId: string, newPassword: string) => {
-    isLoading.value = true;
-    error.value = null;
-
-    if (!isAdmin.value) {
-      error.value = 'Solo los administradores pueden cambiar contraseñas';
-      return false;
-    }
-
+  const changePassword = async (uid: string, newPassword: string) => {
+    isLoading.value = true
+    error.value = null
     try {
-      // Esta funcionalidad requiere Firebase Admin SDK o una función de Cloud Functions
-      // Por ahora, mostramos un mensaje
-      console.warn('Cambio de contraseña no implementado completamente. Requiere Firebase Admin SDK.');
-      error.value = 'Funcionalidad no disponible en esta versión';
-      return false;
-    } catch (err) {
-      console.error('Error al cambiar contraseña:', err);
-      error.value = 'Error al cambiar la contraseña.';
-      return false;
+      const userDoc = await getDoc(doc(db, 'users', uid))
+      if (!userDoc.exists()) {
+        error.value = 'Usuario no encontrado'
+        return false
+      }
+      
+      const userData = userDoc.data()
+      const userCredential = await signInWithEmailAndPassword(auth, userData.email, userData.password)
+      await updatePassword(userCredential.user, newPassword)
+      
+      return true
+    } catch (err: any) {
+      console.error('Error al cambiar contraseña:', err)
+      error.value = err.message
+      return false
     } finally {
-      isLoading.value = false;
+      isLoading.value = false
     }
   }
 
@@ -310,17 +306,15 @@ export function useAuth() {
    * Eliminar usuario completamente (Auth + Firestore)
    */
   const deleteUser = async (uid: string) => {
+    isLoading.value = true
+    error.value = null
     try {
-      isLoading.value = true
-      error.value = null
-      const result = await api.deleteUser(uid)
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-      return result
+      await deleteDoc(doc(db, 'users', uid))
+      return true
     } catch (err: any) {
+      console.error('Error al eliminar usuario:', err)
       error.value = err.message
-      throw err
+      return false
     } finally {
       isLoading.value = false
     }
