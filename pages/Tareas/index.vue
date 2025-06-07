@@ -28,19 +28,19 @@
       </div>
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div v-for="(task, idx) in filteredTasks" :key="task.id" class="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl p-7 flex flex-col group hover:shadow-2xl transition relative">
+        <div v-for="(task, idx) in filteredTasks" :key="task.id" class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-7 flex flex-col group hover:shadow-2xl transition relative">
           <div class="flex items-center mb-2">
             <span class="material-icons text-blue-400 mr-3 text-3xl">task</span>
             <template v-if="editIndex === idx">
-              <input v-model="editForm.nombre" class="input input-xs font-semibold flex-1 mr-2 bg-zinc-800 text-white" />
+              <input v-model="editForm.nombre" class="input input-xs font-semibold flex-1 mr-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-white" />
             </template>
             <template v-else>
-              <h2 class="text-lg font-bold text-white flex-1 truncate">{{ task.nombre }}</h2>
+              <h2 class="text-lg font-bold text-zinc-900 dark:text-white flex-1 truncate">{{ task.nombre }}</h2>
             </template>
           </div>
-          <div class="mb-2 text-zinc-400 text-sm">
+          <div class="mb-2 text-zinc-600 dark:text-zinc-400 text-sm">
             <template v-if="editIndex === idx">
-              <textarea v-model="editForm.descripcion" class="input input-xs w-full bg-zinc-800 text-white" rows="2" />
+              <textarea v-model="editForm.descripcion" class="input input-xs w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-white" rows="2" />
             </template>
             <template v-else>
               <p class="truncate">{{ task.descripcion || 'Sin descripción' }}</p>
@@ -48,27 +48,27 @@
           </div>
           <div class="flex items-center gap-2 mb-2">
             <template v-if="editIndex === idx">
-              <select v-model="editForm.estado" class="input input-xs bg-zinc-800 text-white">
+              <select v-model="editForm.estado" class="input input-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-white">
                 <option value="pendiente">Pendiente</option>
                 <option value="completada">Completada</option>
                 <option value="atrasada">Atrasada</option>
               </select>
-              <input v-model="editForm.responsable" class="input input-xs ml-2 bg-zinc-800 text-white" placeholder="Responsable" />
+              <input v-model="editForm.responsable" class="input input-xs ml-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-white" placeholder="Responsable" />
             </template>
             <template v-else>
               <span class="badge-sm"
                 :class="{
-                  'bg-yellow-600 text-yellow-100': task.estado === 'pendiente',
-                  'bg-green-600 text-green-100': task.estado === 'completada',
-                  'bg-red-600 text-red-100': task.estado === 'atrasada'
+                  'bg-yellow-100 dark:bg-yellow-600 text-yellow-800 dark:text-yellow-100': task.estado === 'pendiente',
+                  'bg-green-100 dark:bg-green-600 text-green-800 dark:text-green-100': task.estado === 'completada',
+                  'bg-red-100 dark:bg-red-600 text-red-800 dark:text-red-100': task.estado === 'atrasada'
                 }"
               >
                 {{ task.estado.charAt(0).toUpperCase() + task.estado.slice(1) }}
               </span>
-              <span v-if="task.responsable" class="ml-2 text-xs text-zinc-300">{{ task.responsable }}</span>
+              <span v-if="task.responsable" class="ml-2 text-xs text-zinc-500 dark:text-zinc-300">{{ task.responsable }}</span>
             </template>
           </div>
-          <div class="flex items-center justify-between mt-4 border-t border-zinc-800 pt-3">
+          <div class="flex items-center justify-between mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-3">
             <div class="flex gap-2">
               <button v-if="editIndex !== idx" class="btn btn-xs btn-outline" @click="startEdit(idx)">
                 <span class="material-icons text-base">edit</span>
@@ -159,7 +159,7 @@ function deleteTask(idx) {
 
 <style scoped>
 .input {
-  @apply border border-zinc-700 bg-zinc-800 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition;
+  @apply border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition;
 }
 .input-xs {
   @apply text-sm px-2 py-1;
@@ -171,7 +171,7 @@ function deleteTask(idx) {
   @apply bg-blue-600 text-white hover:bg-blue-700;
 }
 .btn-outline {
-  @apply border border-blue-600 text-blue-600 bg-zinc-900 hover:bg-blue-900/20;
+  @apply border border-blue-600 text-blue-600 bg-white dark:bg-zinc-900 hover:bg-blue-50 dark:hover:bg-blue-900/20;
 }
 .btn-xs {
   @apply px-2 py-1 text-xs;
