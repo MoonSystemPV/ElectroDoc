@@ -19,13 +19,13 @@
           <option value="atrasada">Atrasada</option>
         </select>
           <button
-            v-if="currentUser && currentUser.value && currentUser.value.role === 'admin'"
+            v-if="currentUser && currentUser.role === 'admin'"
             class="btn-modern flex items-center h-12 animate-bounce-in"
             @click="openCreateModal"
           >
-          <span class="material-icons text-base mr-1">add_task</span>
-          Nueva Tarea
-        </button>
+            <span class="material-icons text-base mr-1">add_task</span>
+            Nueva Tarea
+          </button>
       </div>
       </div>
       <!-- Loader -->
@@ -45,14 +45,14 @@
             <span class="material-icons text-blue-400 mr-3 text-3xl animate-pop">task</span>
             <h2 class="text-lg font-bold text-zinc-900 dark:text-white flex-1 truncate group-hover:text-blue-600 transition-colors">{{ tarea.nombre }}</h2>
             <button
-              v-if="currentUser && currentUser.value && currentUser.value.role === 'admin'"
+              v-if="currentUser && (currentUser.role === 'admin' || (currentUser.role === 'tecnico' && tarea.tecnicosAsignados && tarea.tecnicosAsignados.includes(currentUser.uid)))"
               class="ml-2 btn-icon"
               @click="openEditModal(tarea)"
             >
               <span class="material-icons">edit</span>
             </button>
             <button
-              v-if="currentUser && currentUser.value && currentUser.value.role === 'admin'"
+              v-if="currentUser && currentUser.role === 'admin'"
               class="ml-2 btn-icon"
               @click="deleteTarea(tarea)"
             >
@@ -114,13 +114,13 @@
                   <option value="atrasada">Atrasada</option>
                 </select>
               </div>
-                <div v-if="currentUser && currentUser.value && currentUser.value.role === 'admin'">
+                <div v-if="currentUser && currentUser.role === 'admin'">
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Proyecto</label>
                   <select v-model="form.proyectoId" class="input-modern w-full">
                   <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.nombre }}</option>
                 </select>
-              </div>
-                <div v-if="currentUser && currentUser.value && currentUser.value.role === 'admin'">
+                </div>
+                <div v-if="currentUser && currentUser.role === 'admin'">
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Técnicos asignados</label>
                   <select v-model="form.tecnicosAsignados" class="input-modern w-full" multiple>
                     <option v-for="u in users.filter(u => u.role === 'tecnico')" :key="u.uid" :value="u.uid">
@@ -179,8 +179,8 @@ onMounted(() => {
 
 const filteredTareas = computed(() => {
   let filtered = tareas.value
-  if (currentUser && currentUser.value && currentUser.value.role === 'tecnico') {
-    filtered = filtered.filter(t => Array.isArray(t.tecnicosAsignados) && t.tecnicosAsignados.includes(currentUser.value.id))
+  if (currentUser && currentUser.role === 'tecnico') {
+    filtered = filtered.filter(t => Array.isArray(t.tecnicosAsignados) && t.tecnicosAsignados.includes(currentUser.id))
   }
   if (filterEstado.value) {
     filtered = filtered.filter(t => t.estado === filterEstado.value)
@@ -236,11 +236,11 @@ async function saveNewTarea() {
 }
 
 async function saveEditTarea() {
-  if (!editId || !currentUser || !currentUser.value) return
+  if (!editId || !currentUser) return
   const refDoc = doc(db, 'tareas', editId)
   if (
-    currentUser.value.role === 'admin' ||
-    (currentUser.value.role === 'tecnico' && form.value.tecnicosAsignados.includes(currentUser.value.id))
+    currentUser.role === 'admin' ||
+    (currentUser.role === 'tecnico' && form.value.tecnicosAsignados.includes(currentUser.uid))
   ) {
     await updateDoc(refDoc, {
       nombre: form.value.nombre,
