@@ -2,44 +2,46 @@ import { ref, computed, onServerPrefetch } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 import { useRouter } from 'vue-router'
 import type { User } from '~/types/user'
-import { 
-  signInWithEmailAndPassword, 
+import {
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  signInWithPopup
 } from 'firebase/auth'
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  collection, 
-  getDocs, 
-  query, 
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  query,
   deleteDoc,
-  updateDoc
+  updateDoc,
+  where
 } from 'firebase/firestore'
-import { auth, db } from '~/utils/firebase'
+import { auth, db, googleProvider } from '~/utils/firebase'
 import { useApi } from './useApi'
 
 export function useAuth() {
   const authStore = useAuthStore()
   const router = useRouter()
   const api = useApi()
-  
+
   // Local state for loading and error handling
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  
+
   // Get the current authenticated user from the store
   const user = computed(() => authStore.user)
-  
+
   // Add isAuthenticated computed property for middleware
   const isAuthenticated = computed(() => !!authStore.user)
   const isAdmin = computed(() => authStore.user?.role === 'admin' || authStore.user?.role === 'administrativo')
   const isSupervisor = computed(() => authStore.user?.role === 'supervisor')
   const isTechnician = computed(() => authStore.user?.role === 'tecnico')
-  
+
   /**
    * Inicializa el estado de autenticación monitoreando cambios en Firebase
    */
@@ -104,23 +106,23 @@ export function useAuth() {
       isLoading.value = false;
     }
   }
-  
+
   /**
    * Login with email and password using Firebase
    */
   const login = async (email: string, password: string) => {
     isLoading.value = true
     error.value = null
-    
+
     console.log('Intentando iniciar sesión con:', email);
-    
+
     try {
       // Iniciar sesión con Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
+
       // La actualización del store la maneja el listener en initAuth
       console.log('Login exitoso:', userCredential.user.email, 'UID:', userCredential.user.uid);
-      
+
       // Verificar si el usuario existe en Firestore y si es admin
       const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
       if (userDoc.exists()) {
@@ -137,12 +139,12 @@ export function useAuth() {
         });
         console.log('Documento de usuario creado automáticamente');
       }
-      
+
       return true;
     } catch (err: any) {
       console.error('Login error con código:', err.code);
       console.error('Mensaje completo del error:', err.message);
-      
+
       // Manejar errores específicos de Firebase
       if (err.code === 'auth/user-not-found') {
         error.value = 'Usuario no encontrado. Verifica el correo electrónico.';
@@ -157,27 +159,27 @@ export function useAuth() {
       } else {
         error.value = `Error al iniciar sesión: ${err.code}`;
       }
-      
+
       return false;
     } finally {
       isLoading.value = false;
     }
   }
-  
+
   /**
    * Solicita un restablecimiento de contraseña
    */
   const requestPasswordReset = async (email: string) => {
     isLoading.value = true
     error.value = null
-    
+
     try {
       await sendPasswordResetEmail(auth, email)
       console.log('Email de restablecimiento enviado a:', email)
       return true
     } catch (err: any) {
       console.error('Error al solicitar restablecimiento de contraseña:', err)
-      
+
       if (err.code === 'auth/user-not-found') {
         error.value = 'No existe una cuenta con este correo electrónico'
       } else if (err.code === 'auth/invalid-email') {
@@ -187,13 +189,13 @@ export function useAuth() {
       } else {
         error.value = `Error al enviar correo de restablecimiento: ${err.message}`
       }
-      
+
       return false
     } finally {
       isLoading.value = false
     }
   }
-  
+
   /**
    * Crea un nuevo usuario por el administrador usando el backend
    */
@@ -213,7 +215,7 @@ export function useAuth() {
       isLoading.value = false
     }
   }
-  
+
   /**
    * Obtiene todos los usuarios desde Firestore
    */
@@ -222,14 +224,14 @@ export function useAuth() {
       error.value = 'Solo los administradores pueden listar usuarios';
       return [] as User[];
     }
-    
+
     isLoading.value = true;
     error.value = null;
-    
+
     try {
       const usersSnapshot = await getDocs(collection(db, 'users'));
       const users: User[] = [];
-      
+
       usersSnapshot.forEach((docSnap) => {
         const userData = docSnap.data();
         users.push({
@@ -240,7 +242,7 @@ export function useAuth() {
           fechaCreacion: userData.fechaCreacion?.toDate ? userData.fechaCreacion.toDate() : new Date(userData.fechaCreacion)
         });
       });
-      
+
       return users;
     } catch (err) {
       console.error('Error al obtener usuarios:', err);
@@ -250,23 +252,23 @@ export function useAuth() {
       isLoading.value = false;
     }
   }
-  
+
   /**
    * Logout the current user
    */
   const logout = async () => {
     isLoading.value = true;
     error.value = null;
-    
+
     try {
       await signOut(auth);
-      
+
       // La actualización del store la maneja el listener en initAuth
       console.log('Sesión cerrada correctamente');
-      
+
       // Redireccionar a login
       router.push('/login');
-      
+
       return true;
     } catch (err) {
       console.error('Logout error:', err);
@@ -276,19 +278,19 @@ export function useAuth() {
       isLoading.value = false;
     }
   }
-  
+
   /**
    * Change user password (para implementar)
    */
   const changePassword = async (userId: string, newPassword: string) => {
     isLoading.value = true;
     error.value = null;
-    
+
     if (!isAdmin.value) {
       error.value = 'Solo los administradores pueden cambiar contraseñas';
       return false;
     }
-    
+
     try {
       // Esta funcionalidad requiere Firebase Admin SDK o una función de Cloud Functions
       // Por ahora, mostramos un mensaje
@@ -303,7 +305,7 @@ export function useAuth() {
       isLoading.value = false;
     }
   }
-  
+
   /**
    * Eliminar usuario completamente (Auth + Firestore)
    */
@@ -324,6 +326,63 @@ export function useAuth() {
     }
   }
 
+  /**
+   * Login with Google
+   */
+  const loginWithGoogle = async () => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const result = await signInWithPopup(auth, googleProvider)
+      const user = result.user
+
+      // Verificar si el correo está autorizado en la base de datos
+      const usersRef = collection(db, 'users')
+      const q = query(usersRef, where('email', '==', user.email))
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        // Si el correo no está autorizado, cerrar la sesión
+        await signOut(auth)
+        error.value = 'Tu correo electrónico no está autorizado para iniciar sesión. Por favor, contacta a un administrador para que te agregue al sistema.'
+        return false
+      }
+
+      // Si el correo está autorizado, actualizar la información del usuario
+      const userDoc = querySnapshot.docs[0]
+      const userData = userDoc.data()
+
+      // Verificar si el usuario está activo
+      if (!userData.activo) {
+        await signOut(auth)
+        error.value = 'Tu cuenta ha sido desactivada. Por favor, contacta a un administrador.'
+        return false
+      }
+
+      // Actualizar la información del usuario con los datos de Google
+      await updateDoc(doc(db, 'users', userDoc.id), {
+        nombre: user.displayName || userData.nombre,
+        photoURL: user.photoURL,
+        ultimoAcceso: new Date()
+      })
+
+      return true
+    } catch (err: any) {
+      console.error('Error en login con Google:', err)
+      if (err.code === 'auth/popup-closed-by-user') {
+        error.value = 'Inicio de sesión cancelado'
+      } else if (err.code === 'auth/popup-blocked') {
+        error.value = 'El popup de inicio de sesión fue bloqueado'
+      } else {
+        error.value = `Error al iniciar sesión con Google: ${err.message}`
+      }
+      return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     user,
     isAuthenticated,
@@ -334,10 +393,11 @@ export function useAuth() {
     error,
     initAuth,
     login,
+    loginWithGoogle,
+    logout,
     requestPasswordReset,
     createUser,
     getAllUsers,
-    logout,
     changePassword,
     deleteUser
   }

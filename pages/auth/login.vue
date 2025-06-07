@@ -77,9 +77,15 @@
           <span class="text-zinc-400 dark:text-zinc-500 text-xs">o</span>
           <div class="flex-1 h-px bg-zinc-200 dark:bg-zinc-700"></div>
         </div>
-        <button type="button" class="flex items-center justify-center gap-3 w-full py-3 rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-100 font-semibold shadow hover:bg-zinc-50 dark:hover:bg-zinc-800 transition">
+        <button 
+          type="button" 
+          @click="handleGoogleLogin"
+          class="flex items-center justify-center gap-3 w-full py-3 rounded-xl border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-100 font-semibold shadow hover:bg-zinc-50 dark:hover:bg-zinc-800 transition"
+          :disabled="isLoading"
+        >
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="h-6 w-6" />
-          Iniciar sesión con Google
+          <span v-if="isLoading">Iniciando sesión...</span>
+          <span v-else>Iniciar sesión con Google</span>
         </button>
       </form>
     </div>
@@ -93,7 +99,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from '~/composables/useToast'
 
 const router = useRouter()
-const { login, isLoading, error: authError, initAuth } = useAuth()
+const { login, loginWithGoogle, isLoading, error: authError, initAuth } = useAuth()
 const { showToast } = useToast()
 
 // Form data
@@ -157,6 +163,22 @@ const handleLogin = async () => {
     }
   } catch (err) {
     console.error('Error de excepción en login:', err)
+  }
+}
+
+// Handle Google login
+const handleGoogleLogin = async () => {
+  try {
+    const success = await loginWithGoogle()
+    if (success) {
+      showToast('Inicio de sesión exitoso', 'success')
+      router.push('/dashboard')
+    } else if (authError.value) {
+      showToast(authError.value, 'error')
+    }
+  } catch (err) {
+    console.error('Error en login con Google:', err)
+    showToast('Error al iniciar sesión con Google', 'error')
   }
 }
 </script>
