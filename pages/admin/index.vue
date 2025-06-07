@@ -327,6 +327,22 @@ async function addUser() {
   error.value = null
   
   try {
+    // Validar datos antes de enviar
+    if (!newUser.value.nombre.trim()) {
+      error.value = 'El nombre es requerido'
+      return
+    }
+    
+    if (!newUser.value.email.trim()) {
+      error.value = 'El correo electrónico es requerido'
+      return
+    }
+    
+    if (!newUser.value.password || newUser.value.password.length < 6) {
+      error.value = 'La contraseña debe tener al menos 6 caracteres'
+      return
+    }
+    
     const success = await createUser(newUser.value)
     
     if (success) {
@@ -340,11 +356,11 @@ async function addUser() {
       }
       await loadUsers() // Recargar la lista de usuarios
     } else {
-      error.value = authError.value
+      error.value = authError.value || 'Error al crear el usuario'
     }
   } catch (err) {
     console.error('Error al crear usuario:', err)
-    error.value = 'Error al crear usuario'
+    error.value = err.message || 'Error al crear usuario'
   } finally {
     isLoading.value = false
   }
