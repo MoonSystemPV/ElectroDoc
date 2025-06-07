@@ -92,23 +92,33 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore'
+import { db } from '~/utils/firebase'
 import MainLayout from '~/components/layout/MainLayout.vue'
 
 const isLoadingTasks = ref(false)
-const tasks = ref([
-  { id: 1, nombre: 'Tarea 1', descripcion: 'Revisión de planos', estado: 'pendiente', responsable: 'Juan Pérez' },
-  { id: 2, nombre: 'Tarea 2', descripcion: 'Instalación de cableado', estado: 'completada', responsable: 'Ana Gómez' },
-  { id: 3, nombre: 'Tarea 3', descripcion: 'Inspección final', estado: 'atrasada', responsable: 'Carlos Ruiz' },
-])
+const tasks = ref([])
+
+const fetchTasks = async () => {
+  isLoadingTasks.value = true
+  const querySnapshot = await getDocs(collection(db, 'tareas'))
+  tasks.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+  isLoadingTasks.value = false
+}
+
+onMounted(fetchTasks)
 
 const search = ref('')
 const filterEstado = ref('')
 
 const filteredTasks = computed(() => {
   return tasks.value.filter(task => {
-    const matchesSearch = task.nombre.toLowerCase().includes(search.value.toLowerCase()) ||
-      (task.descripcion && task.descripcion.toLowerCase().includes(search.value.toLowerCase()))
+    const nombre = task.nombre || ''
+    const descripcion = task.descripcion || ''
+    const matchesSearch =
+      nombre.toLowerCase().includes(search.value.toLowerCase()) ||
+      descripcion.toLowerCase().includes(search.value.toLowerCase())
     const matchesEstado = !filterEstado.value || task.estado === filterEstado.value
     return matchesSearch && matchesEstado
   })
@@ -122,10 +132,16 @@ function startEdit(idx) {
   editForm.value = { ...filteredTasks.value[idx] }
 }
 
-function saveEdit(idx) {
-  // Buscar el índice real en tasks (por si hay filtro/búsqueda)
-  const realIdx = tasks.value.findIndex(t => t.id === filteredTasks.value[idx].id)
-  tasks.value[realIdx] = { ...tasks.value[realIdx], ...editForm.value }
+async function saveEdit(idx) {
+  const realTask = filteredTasks.value[idx]
+  const refDoc = doc(db, 'tareas', realTask.id)
+  await updateDoc(refDoc, {
+    nombre: editForm.value.nombre || '',
+    descripcion: editForm.value.descripcion || '',
+    estado: editForm.value.estado || 'pendiente',
+    responsable: editForm.value.responsable || ''
+  })
+  await fetchTasks()
   cancelEdit()
 }
 
@@ -134,25 +150,27 @@ function cancelEdit() {
   editForm.value = { nombre: '', descripcion: '', estado: 'pendiente', responsable: '' }
 }
 
-function addTask() {
+async function addTask() {
   const newTask = {
-    id: Date.now(),
     nombre: 'Nueva tarea',
     descripcion: '',
     estado: 'pendiente',
     responsable: ''
   }
-  tasks.value.unshift(newTask)
-  // Si hay filtro/búsqueda, puede que no se vea, así que lo mostramos igual
+  await addDoc(collection(db, 'tareas'), newTask)
+  await fetchTasks()
+  // Mostrar la nueva tarea para editar
   search.value = ''
   filterEstado.value = ''
-  startEdit(0)
+  setTimeout(() => {
+    startEdit(0)
+  }, 100)
 }
 
-function deleteTask(idx) {
-  // Buscar el índice real en tasks (por si hay filtro/búsqueda)
-  const realIdx = tasks.value.findIndex(t => t.id === filteredTasks.value[idx].id)
-  tasks.value.splice(realIdx, 1)
+async function deleteTask(idx) {
+  const realTask = filteredTasks.value[idx]
+  await deleteDoc(doc(db, 'tareas', realTask.id))
+  await fetchTasks()
   cancelEdit()
 }
 </script>
