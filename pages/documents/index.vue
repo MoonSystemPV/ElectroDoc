@@ -7,15 +7,15 @@
           <input v-model="searchQuery" type="text" placeholder="Buscar documentos..." class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition w-full md:w-72" />
           <select v-model="filterProject" class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition w-full md:w-60">
             <option value="">Todos los proyectos</option>
-            <option value="proyecto1">Proyecto Subestación Central</option>
-            <option value="proyecto2">Línea 220kV</option>
-            <option value="proyecto3">Subestación Norte</option>
-            </select>
+            <option v-for="project in projects" :key="project.id" :value="project.id">
+              {{ project.nombre }}
+            </option>
+          </select>
           <button @click="showAddDocumentModal = true" class="ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
             <span class="material-icons">add</span> Nuevo Documento
-        </button>
-      </div>
-      
+          </button>
+        </div>
+        
         <div v-if="isLoading" class="text-center p-8">
           <div class="animate-spin h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
           <p class="mt-2 text-zinc-600 dark:text-zinc-400">Cargando documentos...</p>
@@ -209,9 +209,9 @@
                   required 
                   class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition"
                 >
-                  <option value="proyecto1">Proyecto Subestación Central</option>
-                  <option value="proyecto2">Línea 220kV</option>
-                  <option value="proyecto3">Subestación Norte</option>
+                  <option v-for="project in projects" :key="project.id" :value="project.id">
+                    {{ project.nombre }}
+                  </option>
                 </select>
               </div>
               
@@ -254,10 +254,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import MainLayout from '~/components/layout/MainLayout.vue'
+import { useProjectStore } from '~/stores/projects'
+import { useProjects } from '~/composables/useProjects'
 
 definePageMeta({
   middleware: ['auth']
@@ -269,10 +271,46 @@ const error = ref(null)
 const searchQuery = ref('')
 const filterProject = ref('')
 const showAddDocumentModal = ref(false)
-const newDocument = ref({
-  name: '',
-  project: '',
-  type: 'pdf'
+const showEditProjectModal = ref(false)
+const projectStore = useProjectStore()
+const { createProject, updateProject } = useProjects()
+
+// Estado para el nuevo proyecto
+const newProject = ref({
+  nombre: '',
+  cliente: '',
+  descripcion: '',
+  fechaInicio: '',
+  fechaVencimiento: '',
+  ubicacion: '',
+  estado: 'activo'
+})
+
+// Estado para el proyecto a editar
+const projectToEdit = ref(null)
+
+// Computed properties
+const projects = computed(() => projectStore.projects)
+
+const filteredDocuments = computed(() => {
+  let filtered = documents.value
+  
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(doc => 
+      doc.name.toLowerCase().includes(query) || 
+      doc.project.toLowerCase().includes(query)
+    )
+  }
+  
+  if (filterProject.value) {
+    const project = projects.value.find(p => p.id === filterProject.value)
+    if (project) {
+      filtered = filtered.filter(doc => doc.project === project.nombre)
+    }
+  }
+  
+  return filtered
 })
 
 // Sample data
@@ -318,30 +356,6 @@ const documents = ref([
     status: 'rejected'
   }
 ])
-
-// Computed properties
-const filteredDocuments = computed(() => {
-  let filtered = documents.value
-  
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(doc => 
-      doc.name.toLowerCase().includes(query) || 
-      doc.project.toLowerCase().includes(query)
-    )
-  }
-  
-  if (filterProject.value) {
-    const projectMap = {
-      'proyecto1': 'Subestación Central',
-      'proyecto2': 'Línea 220kV',
-      'proyecto3': 'Subestación Norte'
-    }
-    filtered = filtered.filter(doc => doc.project === projectMap[filterProject.value])
-  }
-  
-  return filtered
-})
 
 // Helper functions
 function getDocumentIcon(type) {
@@ -417,4 +431,81 @@ function showDocumentOptions(doc) {
   // Implementar lógica de opciones
   console.log('Mostrar opciones del documento:', doc)
 }
+
+// Funciones para manejar proyectos
+async function handleCreateProject() {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    const projectData = {
+      ...newProject.value,
+      fechaInicio: new Date(newProject.value.fechaInicio),
+      fechaVencimiento: newProject.value.fechaVencimiento ? new Date(newProject.value.fechaVencimiento) : null
+    }
+    
+    await createProject(projectData)
+    showAddDocumentModal.value = false
+    newProject.value = {
+      nombre: '',
+      cliente: '',
+      descripcion: '',
+      fechaInicio: '',
+      fechaVencimiento: '',
+      ubicacion: '',
+      estado: 'activo'
+    }
+  } catch (err) {
+    console.error('Error al crear proyecto:', err)
+    error.value = 'Error al crear el proyecto'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function handleEditProject() {
+  if (!projectToEdit.value) return
+  
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    const projectData = {
+      ...projectToEdit.value,
+      fechaInicio: new Date(projectToEdit.value.fechaInicio),
+      fechaVencimiento: projectToEdit.value.fechaVencimiento ? new Date(projectToEdit.value.fechaVencimiento) : null
+    }
+    
+    await updateProject(projectToEdit.value.id, projectData)
+    showEditProjectModal.value = false
+    projectToEdit.value = null
+  } catch (err) {
+    console.error('Error al actualizar proyecto:', err)
+    error.value = 'Error al actualizar el proyecto'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function editProject(project) {
+  projectToEdit.value = {
+    ...project,
+    fechaInicio: format(project.fechaInicio, 'yyyy-MM-dd'),
+    fechaVencimiento: project.fechaVencimiento ? format(project.fechaVencimiento, 'yyyy-MM-dd') : ''
+  }
+  showEditProjectModal.value = true
+}
+
+// Cargar proyectos al montar el componente
+onMounted(async () => {
+  isLoading.value = true
+  try {
+    await projectStore.loadDemoProjects()
+  } catch (err) {
+    console.error('Error al cargar proyectos:', err)
+    error.value = 'Error al cargar proyectos'
+  } finally {
+    isLoading.value = false
+  }
+})
 </script> 

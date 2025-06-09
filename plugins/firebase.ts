@@ -2,6 +2,8 @@ import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
+import { db } from '@/utils/firebase'
+import { collection, addDoc } from 'firebase/firestore'
 
 // Variable para verificar si Firebase ya ha sido inicializado
 let firebaseApp;
@@ -21,27 +23,27 @@ export default defineNuxtPlugin((nuxtApp) => {
       }
     }
   }
-  
+
   try {
     const config = useRuntimeConfig()
-    
+
     // Initialize Firebase with the configuration from runtime config
     const firebaseConfig = config.public.firebaseConfig
-    
+
     // Check if Firebase configuration is properly set
     if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
       console.warn('Firebase configuration is missing or incomplete.')
       return
     }
-    
+
     // Initialize Firebase app and services
     firebaseApp = initializeApp(firebaseConfig)
     auth = getAuth(firebaseApp)
     firestore = getFirestore(firebaseApp)
     storage = getStorage(firebaseApp)
-    
+
     console.log('Firebase initialized successfully')
-    
+
     // Return Firebase services
     return {
       provide: {
