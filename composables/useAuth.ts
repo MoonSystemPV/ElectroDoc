@@ -205,20 +205,10 @@ export function useAuth() {
     isLoading.value = true
     error.value = null
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password)
-      const uid = userCredential.user.uid
-      
-      // Crear el documento del usuario en Firestore
-      await setDoc(doc(db, 'users', uid), {
-        uid,
-        nombre: userData.nombre,
-        email: userData.email,
-        role: userData.role,
-        activo: userData.activo,
-        fechaCreacion: new Date()
-      })
-      
-      return true
+      const result = await api.createUser(userData)
+      if (result.success) return true
+      error.value = result.error || 'Error al crear usuario'
+      return false
     } catch (err: any) {
       console.error('Error al crear usuario:', err)
       error.value = err.message
@@ -276,26 +266,24 @@ export function useAuth() {
   }
 
   /**
-   * Change user password (para implementar)
+   * Cambia la contraseña de un usuario usando el backend (Firebase Admin SDK)
    */
   const changePassword = async (uid: string, newPassword: string) => {
     isLoading.value = true
     error.value = null
     try {
-      const userDoc = await getDoc(doc(db, 'users', uid))
-      if (!userDoc.exists()) {
-        error.value = 'Usuario no encontrado'
-        return false
-      }
-      
-      const userData = userDoc.data()
-      const userCredential = await signInWithEmailAndPassword(auth, userData.email, userData.password)
-      await updatePassword(userCredential.user, newPassword)
-      
-      return true
-    } catch (err: any) {
+      const response = await fetch('/admin-change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, newPassword })
+      })
+      const result = await response.json()
+      if (result.success) return true
+      error.value = result.error || 'Error al cambiar la contraseña'
+      return false
+    } catch (err) {
       console.error('Error al cambiar contraseña:', err)
-      error.value = err.message
+      error.value = err.message || 'Error al cambiar contraseña'
       return false
     } finally {
       isLoading.value = false
@@ -309,8 +297,10 @@ export function useAuth() {
     isLoading.value = true
     error.value = null
     try {
-      await deleteDoc(doc(db, 'users', uid))
-      return true
+      const result = await api.deleteUser(uid)
+      if (result.success) return true
+      error.value = result.error || 'Error al eliminar usuario'
+      return false
     } catch (err: any) {
       console.error('Error al eliminar usuario:', err)
       error.value = err.message
