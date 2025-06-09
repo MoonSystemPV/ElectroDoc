@@ -230,7 +230,7 @@ const {
   error: projectError 
 } = useProjects()
 const {
-  getDocumentsByProject,
+  documents: getDocumentsByProject,
   uploadDocument: apiUploadDocument,
   error: documentError
 } = useDocuments()
