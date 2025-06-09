@@ -8,8 +8,14 @@
           <select v-model="filterRole" class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-60">
             <option value="all">Todos los roles</option>
             <option value="admin">Administradores</option>
+            <option value="administrativo">Administrativos</option>
             <option value="supervisor">Supervisores</option>
             <option value="tecnico">Técnicos</option>
+          </select>
+          <select v-model="filterStatus" class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-60">
+            <option value="all">Todos los estados</option>
+            <option value="true">Activos</option>
+            <option value="false">Inactivos</option>
           </select>
           <button @click="showAddUserModal = true" class="ml-auto flex items-center gap-2 bg-pink-500 hover:bg-pink-400 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
             <span class="material-icons">person_add</span> Añadir Usuario
@@ -32,37 +38,51 @@
                 <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Nombre</th>
                 <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Email</th>
                 <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Rol</th>
+                <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Estado</th>
                 <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Fecha Creación</th>
                 <th class="px-6 py-3"></th>
-                </tr>
-              </thead>
+              </tr>
+            </thead>
             <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
               <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-700 transition">
                 <td class="px-6 py-4 whitespace-nowrap flex items-center gap-3">
                   <div class="w-10 h-10 rounded-full bg-pink-200 dark:bg-pink-400 flex items-center justify-center text-pink-700 dark:text-white font-bold text-lg">
                     {{ getInitials(user.nombre) }}
-                      </div>
+                  </div>
                   <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ user.nombre }}</span>
-                  </td>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-zinc-700 dark:text-zinc-100">{{ user.email }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-4 whitespace-nowrap">
                   <span class="px-3 py-1 rounded-full text-xs font-semibold"
-                      :class="{
+                    :class="{
                       'bg-pink-100 dark:bg-pink-500 text-pink-700 dark:text-white': user.role === 'admin',
+                      'bg-purple-100 dark:bg-purple-500 text-purple-700 dark:text-white': user.role === 'administrativo',
                       'bg-cyan-100 dark:bg-cyan-500 text-cyan-700 dark:text-white': user.role === 'supervisor',
                       'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': user.role === 'tecnico'
                     }">
                     {{ getRoleName(user.role) }}
-                    </span>
-                  </td>
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-3 py-1 rounded-full text-xs font-semibold"
+                    :class="{
+                      'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': user.activo,
+                      'bg-red-100 dark:bg-red-500 text-red-700 dark:text-white': !user.activo
+                    }">
+                    {{ user.activo ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-300">{{ formatDate(user.fechaCreacion) }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-2">
                   <button @click="resetPassword(user)" class="text-blue-600 dark:text-blue-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">Cambiar Contraseña</button>
+                  <button @click="toggleUserStatus(user)" class="text-yellow-600 dark:text-yellow-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">
+                    {{ user.activo ? 'Desactivar' : 'Activar' }}
+                  </button>
                   <button @click="confirmDeleteUser(user)" class="text-red-600 dark:text-red-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">Eliminar</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
       
@@ -84,49 +104,49 @@
           
           <form @submit.prevent="addUser">
             <div class="space-y-4">
-            <div>
+              <div>
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nombre</label>
-              <input
+                <input
                   v-model="newUser.nombre" 
-                type="text"
-                required
+                  type="text"
+                  required
                   class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
                   placeholder="Nombre completo"
-              />
-            </div>
-            
-            <div>
+                />
+              </div>
+              
+              <div>
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email</label>
-              <input
+                <input
                   v-model="newUser.email" 
-                type="email"
-                required
+                  type="email"
+                  required
                   class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
                   placeholder="correo@ejemplo.com"
-              />
-            </div>
-            
-            <div>
+                />
+              </div>
+              
+              <div>
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Rol</label>
-              <select
+                <select
                   v-model="newUser.role" 
-                required
+                  required
                   class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
-              >
+                >
                   <option value="supervisor">Supervisor</option>
-                <option value="tecnico">Técnico</option>
-              </select>
-            </div>
-            
-            <div>
+                  <option value="tecnico">Técnico</option>
+                </select>
+              </div>
+              
+              <div>
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Contraseña</label>
-              <input
+                <input
                   v-model="newUser.password" 
-                type="password"
-                required
+                  type="password"
+                  required
                   class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
                   placeholder="Contraseña"
-              />
+                />
                 <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Mínimo 6 caracteres</p>
               </div>
             </div>
@@ -170,24 +190,24 @@
           
           <form @submit.prevent="handlePasswordChange">
             <div class="space-y-4">
-            <div>
+              <div>
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Usuario</label>
                 <div class="p-2 bg-zinc-100 dark:bg-zinc-900 rounded-lg text-zinc-800 dark:text-zinc-100">
                   {{ selectedUser?.nombre }} ({{ selectedUser?.email }})
                 </div>
-            </div>
-            
-            <div>
+              </div>
+              
+              <div>
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nueva Contraseña</label>
-              <input
+                <input
                   v-model="newPassword" 
                   type="password" 
-                required
+                  required
                   class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition"
                   placeholder="Nueva contraseña"
                   minlength="6"
-              />
-            </div>
+                />
+              </div>
             </div>
             
             <div class="mt-6 flex justify-end space-x-3">
@@ -261,6 +281,7 @@ const isLoading = ref(false)
 const error = ref(null)
 const searchQuery = ref('')
 const filterRole = ref('all')
+const filterStatus = ref('all')
 
 // Estado para modal de creación de usuario
 const showAddUserModal = ref(false)
@@ -268,7 +289,8 @@ const newUser = ref({
   nombre: '',
   email: '',
   role: 'tecnico',
-  password: ''
+  password: '',
+  activo: true
 })
 
 // Estado para modal de cambio de contraseña
@@ -305,6 +327,11 @@ const filteredUsers = computed(() => {
   return users.value.filter(user => {
     // Filtrar por rol
     if (filterRole.value !== 'all' && user.role !== filterRole.value) {
+      return false
+    }
+    
+    // Filtrar por estado
+    if (filterStatus.value !== 'all' && user.activo !== (filterStatus.value === 'true')) {
       return false
     }
     
@@ -352,7 +379,8 @@ async function addUser() {
         nombre: '',
         email: '',
         role: 'tecnico',
-        password: ''
+        password: '',
+        activo: true
       }
       await loadUsers() // Recargar la lista de usuarios
     } else {
@@ -392,6 +420,28 @@ async function handlePasswordChange() {
   } catch (err) {
     console.error('Error al cambiar contraseña:', err)
     error.value = 'Error al cambiar contraseña'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function toggleUserStatus(user) {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    // TODO: Implementar la actualización del estado del usuario en Firebase
+    const success = await updateUserStatus(user.id, !user.activo)
+    
+    if (success) {
+      showToast(`Usuario ${user.nombre} ${user.activo ? 'desactivado' : 'activado'} correctamente`, 'success')
+      await loadUsers() // Recargar la lista de usuarios
+    } else {
+      error.value = 'Error al cambiar el estado del usuario'
+    }
+  } catch (err) {
+    console.error('Error al cambiar estado del usuario:', err)
+    error.value = 'Error al cambiar estado del usuario'
   } finally {
     isLoading.value = false
   }
@@ -441,8 +491,9 @@ function getInitials(name) {
 function getRoleName(role) {
   switch (role) {
     case 'admin':
-    case 'administrativo':
       return 'Administrador'
+    case 'administrativo':
+      return 'Administrativo'
     case 'supervisor':
       return 'Supervisor'
     case 'tecnico':
@@ -454,13 +505,26 @@ function getRoleName(role) {
 
 function formatDate(date) {
   if (!date) return 'Fecha desconocida'
-  
   try {
+    // Si es un Timestamp de Firestore
+    if (date.seconds && date.nanoseconds) {
+      const d = new Date(date.seconds * 1000)
+      return d.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+    // Si es un string o Date
     const d = date instanceof Date ? date : new Date(date)
     return d.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'short',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   } catch (e) {
     return 'Fecha inválida'

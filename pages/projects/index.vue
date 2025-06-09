@@ -22,6 +22,9 @@
             <option value="completado">Completado</option>
             <option value="suspendido">Suspendido</option>
           </select>
+          <button @click="openNewProjectModal" class="ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
+            <span class="material-icons">add</span> Nuevo Proyecto
+          </button>
         </div>
 
         <div v-if="isLoading" class="text-center p-8">
@@ -58,8 +61,7 @@
                   </button>
                 </div>
               </div>
-              
-              <div class="space-y-3 mb-4">
+              <div class="space-y-2 mb-4">
                 <div class="flex items-center text-sm text-zinc-600 dark:text-zinc-300">
                   <span class="material-icons text-blue-500 mr-2">calendar_today</span>
                   <span>Inicio: {{ formatDate(project.fechaInicio) }}</span>
@@ -376,12 +378,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc, deleteDoc, onSnapshot, Timestamp } from 'firebase/firestore'
+import { db } from '@/utils/firebase'
 import MainLayout from '~/components/layout/MainLayout.vue'
 import { useProjects } from '~/composables/useProjects'
 import { useActivities } from '~/composables/useActivities'
 import ProjectForm from '@/components/ProjectForm.vue'
-import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc, deleteDoc } from 'firebase/firestore'
-import { db } from '@/utils/firebase'
 import { useAuth } from '~/composables/useAuth'
 
 // Aplicar middleware de autenticación
@@ -417,34 +419,36 @@ const projectFolders = ref([])
 const showNewProjectModal = ref(false)
 const showEditProjectModal = ref(false)
 
-// Nuevo proyecto
+// Datos para nuevo proyecto
 const newProject = ref({
   nombre: '',
   cliente: '',
-  supervisor: '',
+  descripcion: '',
+  estado: 'activo',
+  fechaCreacion: '',
   fechaInicio: '',
   fechaFin: '',
-  descripcion: '',
-  ubicacion: '',
-  estado: 'activo'
+  tecnicosAsignados: []
 })
 
-// Proyectos filtrados
-const filteredProjects = computed(() => {
-  return projects.value.filter(project => {
-    if (filterStatus.value && project.estado !== filterStatus.value) {
-      return false
-    }
-    
-    if (searchQuery.value) {
-      const query = searchQuery.value.toLowerCase()
-      return (
-        project.nombre.toLowerCase().includes(query) ||
-        project.cliente.toLowerCase().includes(query)
-      )
-    }
-    
-    return true
+// Datos para edición de proyecto
+const editProjectData = ref({
+  id: '',
+  nombre: '',
+  cliente: '',
+  descripcion: '',
+  estado: 'activo',
+  fechaCreacion: '',
+  fechaInicio: '',
+  fechaFin: '',
+  tecnicosAsignados: []
+})
+
+onMounted(() => {
+  isLoading.value = true
+  onSnapshot(collection(db, 'projects'), (querySnapshot) => {
+    projects.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    isLoading.value = false
   })
 })
 
@@ -488,14 +492,11 @@ onMounted(async () => {
 // Funciones
 function getStatusText(status) {
   switch (status) {
-    case 'activo':
-      return 'Activo'
-    case 'completado':
-      return 'Completado'
-    case 'cancelado':
-      return 'Cancelado'
-    default:
-      return status
+    case 'activo': return 'Activo'
+    case 'completado': return 'Completado'
+    case 'cancelado': return 'Cancelado'
+    case 'suspendido': return 'Suspendido'
+    default: return status
   }
 }
 
@@ -503,6 +504,11 @@ function formatDate(date) {
   if (!date) return 'No especificada'
   
   try {
+    // Si es un Timestamp de Firestore
+    if (date.seconds) {
+      return new Date(date.seconds * 1000).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+    }
+    // Si es string o Date
     const d = date instanceof Date ? date : new Date(date)
     if (isNaN(d.getTime())) return 'Fecha inválida'
     
@@ -517,16 +523,51 @@ function formatDate(date) {
   }
 }
 
-function editProject(project) {
-  console.log('Intentando editar proyecto:', { project, canEdit: canEditProjects.value })
-  
-  if (!canEditProjects.value) {
-    error.value = 'Solo los supervisores y administradores pueden editar proyectos'
-    return
+function openNewProjectModal() {
+  showNewProjectModal.value = true
+  error.value = null
+  newProject.value = {
+    nombre: '',
+    cliente: '',
+    descripcion: '',
+    estado: 'activo',
+    fechaCreacion: '',
+    fechaInicio: '',
+    fechaFin: '',
+    tecnicosAsignados: []
   }
-  
-  selectedProject.value = project
-  showEditProjectModal.value = true
+}
+
+async function addProject() {
+  isLoading.value = true;
+  error.value = null;
+  if (!newProject.value.nombre || !newProject.value.cliente || !newProject.value.descripcion || !newProject.value.fechaInicio || !newProject.value.fechaFin) {
+    error.value = 'Completa todos los campos.';
+    isLoading.value = false;
+    return;
+  }
+  try {
+    const projectData = {
+      ...newProject.value,
+      fechaCreacion: Timestamp.now(),
+      fechaInicio: Timestamp.fromDate(new Date(newProject.value.fechaInicio)),
+      fechaFin: Timestamp.fromDate(new Date(newProject.value.fechaFin)),
+      tecnicosAsignados: []
+    };
+    await addDoc(collection(db, 'projects'), projectData);
+    showNewProjectModal.value = false;
+    await loadProjects();
+  } catch (err) {
+    error.value = 'Error al crear proyecto: ' + (err?.message || err);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+function editProject(project) {
+  editProjectData.value = { ...project };
+  showEditProjectModal.value = true;
+  error.value = null;
 }
 
 function showProjectOptions(project) {
@@ -540,41 +581,21 @@ function viewProjectDetails(project) {
   loadProjectFolders()
 }
 
-function onProjectFormSubmit(data) {
-  addProject(data)
-  showAddProjectModal.value = false
-}
-
-async function addProject(formData) {
-  isLoading.value = true
-  error.value = null
+async function saveEditProject() {
+  isLoading.value = true;
   try {
-    // Mapeo de campos para la base de datos
-    const projectData = {
-      nombre: formData.nombre,
-      cliente: formData.cliente,
-      descripcion: formData.descripcion || '',
-      fechaInicio: formData.fechaInicio,
-      fechaVencimiento: formData.fechaFin || null,
-      estado: formData.estado,
-      tecnicosAsignados: []
-    }
-    const projectId = await createProject(projectData)
-    if (projectId) {
-      await addActivity({
-        projectId: projectId.toString(),
-        action: 'create_project',
-        details: `Proyecto creado: ${projectData.nombre}`
-      })
-      await loadProjects()
-    } else {
-      error.value = projectError.value || 'Error al crear el proyecto'
-    }
-  } catch (err) {
-    console.error('Error al crear proyecto:', err)
-    error.value = 'Error al crear el proyecto'
+    const refDoc = doc(db, 'projects', editProjectData.value.id);
+    await updateDoc(refDoc, {
+      ...editProjectData.value,
+      fechaInicio: editProjectData.value.fechaInicio ? Timestamp.fromDate(new Date(editProjectData.value.fechaInicio)) : null,
+      fechaFin: editProjectData.value.fechaFin ? Timestamp.fromDate(new Date(editProjectData.value.fechaFin)) : null,
+    });
+    showEditProjectModal.value = false;
+    await loadProjects();
+  } catch (e) {
+    error.value = 'Error al editar proyecto';
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
@@ -792,4 +813,16 @@ async function handleProjectSubmit(projectData) {
     error.value = 'Error al guardar el proyecto'
   }
 }
+
+const filteredProjects = computed(() => {
+  return (projects.value || []).filter(project => {
+    const nombre = project.nombre || ''
+    const cliente = project.cliente || ''
+    const matchesStatus = !filterStatus.value || project.estado === filterStatus.value
+    const matchesSearch =
+      nombre.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      cliente.toLowerCase().includes(searchQuery.value.toLowerCase())
+    return matchesStatus && matchesSearch
+  })
+})
 </script> 
