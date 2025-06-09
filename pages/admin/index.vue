@@ -1,7 +1,7 @@
 <template>
   <MainLayout>
     <div class="p-2 md:p-0">
-      <h1 class="text-3xl font-extrabold mb-8 text-pink-500 dark:text-pink-400 tracking-tight">Usuarios</h1>
+      <h1 class="text-3xl font-extrabold mb-8 text-blue-500 dark:text-white tracking-tight">Usuarios</h1>
       <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl p-8 transition-colors">
         <div class="flex flex-col md:flex-row md:items-center gap-4 mb-6">
           <input v-model="searchQuery" type="text" placeholder="Buscar usuarios..." class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-72" />
@@ -267,12 +267,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import MainLayout from '~/components/layout/MainLayout.vue'
+import { updateDoc, doc } from 'firebase/firestore'
+import { db } from '~/utils/firebase'
 
 definePageMeta({
   middleware: ['auth', 'admin']
 })
 
-const { user, createUser, changePassword, getAllUsers, deleteUser, isLoading: authLoading, error: authError } = useAuth()
+const { user, createUser, changePassword, getAllUsers, deleteUser, isLoading: authLoading, error: authError, updateUserStatus } = useAuth()
 const { showToast } = useToast()
 
 // Estado
@@ -428,17 +430,11 @@ async function handlePasswordChange() {
 async function toggleUserStatus(user) {
   isLoading.value = true
   error.value = null
-  
+
   try {
-    // TODO: Implementar la actualización del estado del usuario en Firebase
-    const success = await updateUserStatus(user.id, !user.activo)
-    
-    if (success) {
-      showToast(`Usuario ${user.nombre} ${user.activo ? 'desactivado' : 'activado'} correctamente`, 'success')
-      await loadUsers() // Recargar la lista de usuarios
-    } else {
-      error.value = 'Error al cambiar el estado del usuario'
-    }
+    await updateDoc(doc(db, 'users', user.id || user.uid), { activo: !user.activo })
+    showToast(`Usuario ${user.nombre} ${user.activo ? 'desactivado' : 'activado'} correctamente`, 'success')
+    await loadUsers() // Recargar la lista de usuarios
   } catch (err) {
     console.error('Error al cambiar estado del usuario:', err)
     error.value = 'Error al cambiar estado del usuario'
@@ -454,17 +450,14 @@ function confirmDeleteUser(user) {
 
 async function handleDeleteUser() {
   if (!selectedUser.value) return
-  
   isLoading.value = true
   error.value = null
-  
   try {
-    const success = await deleteUser(selectedUser.value.id)
-    
+    const success = await deleteUser(selectedUser.value.id || selectedUser.value.uid)
     if (success) {
       showDeleteModal.value = false
       showToast(`Usuario ${selectedUser.value.nombre} eliminado correctamente.`, 'error')
-      users.value = users.value.filter(u => u.id !== selectedUser.value.id)
+      users.value = users.value.filter(u => (u.id || u.uid) !== (selectedUser.value.id || selectedUser.value.uid))
       selectedUser.value = null
     } else {
       error.value = authError.value

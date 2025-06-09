@@ -36,8 +36,25 @@ export function useApi() {
     }
   }
 
+  const updateUserStatus = async (uid: string, activo: boolean) => {
+    try {
+      const response = await fetch(`${baseURL}/update-user-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ uid, activo }),
+      })
+      return await response.json()
+    } catch (error) {
+      console.error('Error al actualizar estado del usuario:', error)
+      throw error
+    }
+  }
+
   return {
     createUser,
     deleteUser,
+    updateUserStatus,
   }
 } 

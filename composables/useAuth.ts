@@ -377,6 +377,24 @@ export function useAuth() {
     }
   }
 
+  /**
+   * Actualiza el estado (activo/inactivo) de un usuario
+   */
+  const updateUserStatus = async (uid: string, activo: boolean) => {
+    isLoading.value = true
+    error.value = null
+    try {
+      const result = await api.updateUserStatus(uid, activo)
+      return result.success
+    } catch (err: any) {
+      console.error('Error al actualizar estado del usuario:', err)
+      error.value = err.message || 'Error al actualizar estado del usuario'
+      return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     user,
     isAuthenticated,
@@ -393,6 +411,7 @@ export function useAuth() {
     createUser,
     getAllUsers,
     changePassword,
-    deleteUser
+    deleteUser,
+    updateUserStatus
   }
 } 
