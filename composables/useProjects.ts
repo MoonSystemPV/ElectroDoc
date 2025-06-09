@@ -1,6 +1,8 @@
 import { ref } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useProjectStore } from '~/stores/projects'
+import { collection, addDoc, getDocs, query, where, orderBy, doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { useNuxtApp } from '#app'
 
 export interface Project {
   id: string
@@ -19,11 +21,12 @@ export interface Project {
 export const useProjects = () => {
   const { user } = useAuth()
   const projectStore = useProjectStore()
-  
+  const { $firebase } = useNuxtApp()
+
   const projects = ref<Project[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  
+
   /**
    * Get all projects with optional filtering
    */
@@ -34,30 +37,179 @@ export const useProjects = () => {
   }) => {
     isLoading.value = true
     error.value = null
-    
+
     try {
-      console.log('Usando datos de demostración directamente')
-      // Cargar proyectos de demostración en lugar de intentar usar Firestore
-      await loadDemoProjects();
-      return projectStore.projects;
+      const projectsRef = collection($firebase.firestore, 'projects')
+      let q = query(projectsRef)
+
+      if (options?.filterByStatus) {
+        q = query(q, where('estado', '==', options.filterByStatus))
+      }
+
+      if (options?.filterByTechnician) {
+        q = query(q, where('tecnicosAsignados', 'array-contains', options.filterByTechnician))
+      }
+
+      if (options?.limit) {
+        q = query(q, limit(options.limit))
+      }
+
+      const querySnapshot = await getDocs(q)
+      const projectsList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Project[]
+
+      projectStore.setProjects(projectsList)
+      projects.value = projectsList
+
+      return projectsList
     } catch (err) {
       console.error('Error fetching projects:', err)
       error.value = 'Error al cargar los proyectos'
-      
-      // Si hay error, cargar proyectos de demostración
-      await loadDemoProjects();
-      return projectStore.projects;
+      return []
     } finally {
       isLoading.value = false
     }
   }
-  
+
+  /**
+   * Get a project by ID
+   */
+  const getProjectById = async (id: string) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const projectDoc = await getDoc(doc($firebase.firestore, 'projects', id))
+
+      if (projectDoc.exists()) {
+        const project = {
+          id: projectDoc.id,
+          ...projectDoc.data()
+        } as Project
+
+        return project
+      } else {
+        error.value = 'Proyecto no encontrado'
+        return null
+      }
+    } catch (err) {
+      console.error('Error fetching project:', err)
+      error.value = 'Error al cargar el proyecto'
+      return null
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * Create a new project
+   */
+  const createProject = async (projectData: Partial<Project>) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const projectsRef = collection($firebase.firestore, 'projects')
+
+      const newProject = {
+        nombre: projectData.nombre || 'Nuevo Proyecto',
+        cliente: projectData.cliente || 'Cliente',
+        descripcion: projectData.descripcion || '',
+        fechaInicio: projectData.fechaInicio || new Date(),
+        fechaVencimiento: projectData.fechaVencimiento || null,
+        ubicacion: projectData.ubicacion || '',
+        estado: projectData.estado || 'activo',
+        tecnicosAsignados: projectData.tecnicosAsignados || [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }
+
+      const docRef = await addDoc(projectsRef, newProject)
+
+      // Actualizar el store con el nuevo proyecto
+      const createdProject = {
+        id: docRef.id,
+        ...newProject
+      } as Project
+
+      projectStore.addProject(createdProject)
+
+      return docRef.id
+    } catch (err) {
+      console.error('Error creating project:', err)
+      error.value = 'Error al crear el proyecto'
+      return null
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * Update a project
+   */
+  const updateProject = async (id: string, projectData: Partial<Project>) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const projectRef = doc($firebase.firestore, 'projects', id)
+
+      const updateData = {
+        ...projectData,
+        updatedAt: serverTimestamp()
+      }
+
+      await updateDoc(projectRef, updateData)
+
+      // Actualizar el store
+      const updatedProject = {
+        id,
+        ...projectData
+      } as Project
+
+      projectStore.updateProject(updatedProject)
+
+      return true
+    } catch (err) {
+      console.error('Error updating project:', err)
+      error.value = 'Error al actualizar el proyecto'
+      return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * Delete a project
+   */
+  const deleteProject = async (id: string) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      await deleteDoc(doc($firebase.firestore, 'projects', id))
+
+      // Actualizar el store
+      projectStore.removeProject(id)
+
+      return true
+    } catch (err) {
+      console.error('Error deleting project:', err)
+      error.value = 'Error al eliminar el proyecto'
+      return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   /**
    * Carga proyectos de demostración cuando no se pueden obtener de Firestore
    */
   const loadDemoProjects = async () => {
     console.log('Cargando proyectos de demostración');
-    
+
     const demoProjects: Project[] = [
       {
         id: 'proj-1',
@@ -112,14 +264,14 @@ export const useProjects = () => {
         updatedAt: new Date(2023, 4, 5)
       }
     ];
-    
+
     // Guardar proyectos en el store
     projectStore.setProjects(demoProjects);
     projects.value = demoProjects;
-    
+
     return demoProjects;
   }
-  
+
   /**
    * Get projects for the current user (technician role)
    */
@@ -128,194 +280,54 @@ export const useProjects = () => {
       error.value = 'Usuario no autenticado'
       return []
     }
-    
+
     // Llamamos directamente a loadDemoProjects
     const allProjects = await loadDemoProjects();
-    
+
     // Filtramos por el id del usuario actual
-    const userProjects = allProjects.filter(project => 
+    const userProjects = allProjects.filter(project =>
       project.tecnicosAsignados.includes(user.value?.id || '')
     );
-    
+
     return userProjects;
   }
-  
-  /**
-   * Get a project by ID
-   */
-  const getProjectById = async (id: string) => {
-    isLoading.value = true
-    error.value = null
-    
-    try {
-      // Cargar todos los proyectos demo
-      await loadDemoProjects();
-      
-      // Buscar el proyecto por ID
-      const project = projectStore.projects.find(p => p.id === id);
-      
-      if (project) {
-        return project;
-      } else {
-        error.value = 'Proyecto no encontrado';
-        return null;
-      }
-    } catch (err) {
-      console.error('Error fetching project:', err);
-      error.value = 'Error al cargar el proyecto';
-      return null;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
-  /**
-   * Create a new project
-   */
-  const createProject = async (projectData: Partial<Project>) => {
-    isLoading.value = true;
-    error.value = null;
-    
-    try {
-      // Generar un ID único para el nuevo proyecto
-      const newId = 'proj-' + Date.now();
-      
-      // Crear el objeto del nuevo proyecto
-      const newProject: Project = {
-        id: newId,
-        nombre: projectData.nombre || 'Nuevo Proyecto',
-        cliente: projectData.cliente || 'Cliente',
-        descripcion: projectData.descripcion || '',
-        fechaInicio: projectData.fechaInicio || new Date(),
-        fechaVencimiento: projectData.fechaVencimiento || null,
-        ubicacion: projectData.ubicacion || '',
-        estado: projectData.estado || 'activo',
-        tecnicosAsignados: projectData.tecnicosAsignados || [],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      // Cargar proyectos existentes
-      await loadDemoProjects();
-      
-      // Añadir el nuevo proyecto
-      const updatedProjects = [...projectStore.projects, newProject];
-      projectStore.setProjects(updatedProjects);
-      
-      return newProject;
-    } catch (err) {
-      console.error('Error creating project:', err);
-      error.value = 'Error al crear el proyecto';
-      return null;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
-  /**
-   * Update an existing project
-   */
-  const updateProject = async (id: string, projectData: Partial<Project>) => {
-    isLoading.value = true;
-    error.value = null;
-    
-    try {
-      // Cargar proyectos existentes
-      await loadDemoProjects();
-      
-      // Buscar el proyecto a actualizar
-      const projectIndex = projectStore.projects.findIndex(p => p.id === id);
-      
-      if (projectIndex === -1) {
-        error.value = 'Proyecto no encontrado';
-        return null;
-      }
-      
-      // Actualizar el proyecto
-      const updatedProject = {
-        ...projectStore.projects[projectIndex],
-        ...projectData,
-        updatedAt: new Date()
-      };
-      
-      // Actualizar la lista de proyectos
-      const updatedProjects = [...projectStore.projects];
-      updatedProjects[projectIndex] = updatedProject;
-      projectStore.setProjects(updatedProjects);
-      
-      return updatedProject;
-    } catch (err) {
-      console.error('Error updating project:', err);
-      error.value = 'Error al actualizar el proyecto';
-      return null;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
-  /**
-   * Delete a project
-   */
-  const deleteProject = async (id: string) => {
-    isLoading.value = true;
-    error.value = null;
-    
-    try {
-      // Cargar proyectos existentes
-      await loadDemoProjects();
-      
-      // Filtrar el proyecto a eliminar
-      const updatedProjects = projectStore.projects.filter(p => p.id !== id);
-      
-      // Actualizar el store
-      projectStore.setProjects(updatedProjects);
-      
-      return true;
-    } catch (err) {
-      console.error('Error deleting project:', err);
-      error.value = 'Error al eliminar el proyecto';
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
+
   /**
    * Assign a technician to a project
    */
   const assignTechnician = async (projectId: string, technicianId: string) => {
     isLoading.value = true;
     error.value = null;
-    
+
     try {
       // Cargar proyectos existentes
       await loadDemoProjects();
-      
+
       // Buscar el proyecto
       const projectIndex = projectStore.projects.findIndex(p => p.id === projectId);
-      
+
       if (projectIndex === -1) {
         error.value = 'Proyecto no encontrado';
         return false;
       }
-      
+
       // Verificar si el técnico ya está asignado
       if (projectStore.projects[projectIndex].tecnicosAsignados.includes(technicianId)) {
         return true; // Ya está asignado, no hacemos nada
       }
-      
+
       // Añadir el técnico al proyecto
       const updatedProject = {
         ...projectStore.projects[projectIndex],
         tecnicosAsignados: [...projectStore.projects[projectIndex].tecnicosAsignados, technicianId],
         updatedAt: new Date()
       };
-      
+
       // Actualizar la lista de proyectos
       const updatedProjects = [...projectStore.projects];
       updatedProjects[projectIndex] = updatedProject;
       projectStore.setProjects(updatedProjects);
-      
+
       return true;
     } catch (err) {
       console.error('Error assigning technician:', err);
@@ -325,38 +337,38 @@ export const useProjects = () => {
       isLoading.value = false;
     }
   }
-  
+
   /**
    * Remove a technician from a project
    */
   const removeTechnician = async (projectId: string, technicianId: string) => {
     isLoading.value = true;
     error.value = null;
-    
+
     try {
       // Cargar proyectos existentes
       await loadDemoProjects();
-      
+
       // Buscar el proyecto
       const projectIndex = projectStore.projects.findIndex(p => p.id === projectId);
-      
+
       if (projectIndex === -1) {
         error.value = 'Proyecto no encontrado';
         return false;
       }
-      
+
       // Eliminar el técnico del proyecto
       const updatedProject = {
         ...projectStore.projects[projectIndex],
         tecnicosAsignados: projectStore.projects[projectIndex].tecnicosAsignados.filter(id => id !== technicianId),
         updatedAt: new Date()
       };
-      
+
       // Actualizar la lista de proyectos
       const updatedProjects = [...projectStore.projects];
       updatedProjects[projectIndex] = updatedProject;
       projectStore.setProjects(updatedProjects);
-      
+
       return true;
     } catch (err) {
       console.error('Error removing technician:', err);
