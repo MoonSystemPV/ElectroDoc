@@ -77,27 +77,18 @@
                 </button>
                 <button 
                   v-if="canEditProjects"
-                  @click="showStatusModal = true; selectedProjectForStatus = project"
+                  @click="!isProjectExpired(project) && (showStatusModal = true, selectedProjectForStatus = project)"
                   class="text-sm px-3 py-1 rounded-full transition-colors"
                   :class="{
                     'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': project.estado === 'activo',
                     'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400': project.estado === 'completado',
-                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': project.estado === 'cancelado'
+                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': project.estado === 'cancelado',
+                    'cursor-not-allowed opacity-60': isProjectExpired(project)
                   }"
+                  :disabled="isProjectExpired(project)"
                 >
                   {{ isProjectExpired(project) ? 'Caducado' : getStatusText(project.estado) }}
                 </button>
-                <span 
-                  v-else
-                  class="text-sm px-3 py-1 rounded-full"
-                  :class="{
-                    'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': project.estado === 'activo',
-                    'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400': project.estado === 'completado',
-                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': project.estado === 'cancelado'
-                  }"
-                >
-                  {{ isProjectExpired(project) ? 'Caducado' : getStatusText(project.estado) }}
-                </span>
               </div>
             </div>
           </div>
@@ -882,7 +873,7 @@ const statusOptions = [
     inactiveClass: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-900/20',
   },
 ]
-</script>
+</script> 
 
 <style scoped>
 .expired-project {
