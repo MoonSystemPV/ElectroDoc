@@ -280,7 +280,7 @@ export function useAuth() {
       const result = await response.json()
       if (result.success) return true
       error.value = result.error || 'Error al cambiar la contraseña'
-      return false
+        return false
     } catch (err) {
       console.error('Error al cambiar contraseña:', err)
       error.value = err.message || 'Error al cambiar contraseña'
