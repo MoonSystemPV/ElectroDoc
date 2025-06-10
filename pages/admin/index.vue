@@ -8,7 +8,6 @@
           <select v-model="filterRole" class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-60">
             <option value="all">Todos los roles</option>
             <option value="admin">Administradores</option>
-            <option value="administrativo">Administrativos</option>
             <option value="supervisor">Supervisores</option>
             <option value="tecnico">Técnicos</option>
           </select>
@@ -56,9 +55,8 @@
                   <span class="px-3 py-1 rounded-full text-xs font-semibold"
                     :class="{
                       'bg-pink-100 dark:bg-pink-500 text-pink-700 dark:text-white': user.role === 'admin',
-                      'bg-purple-100 dark:bg-purple-500 text-purple-700 dark:text-white': user.role === 'administrativo',
-                      'bg-cyan-100 dark:bg-cyan-500 text-cyan-700 dark:text-white': user.role === 'supervisor',
-                      'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': user.role === 'tecnico'
+                      'bg-purple-100 dark:bg-purple-500 text-purple-700 dark:text-white': user.role === 'supervisor',
+                      'bg-cyan-100 dark:bg-cyan-500 text-cyan-700 dark:text-white': user.role === 'tecnico'
                     }">
                     {{ getRoleName(user.role) }}
                   </span>
@@ -74,11 +72,11 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-300">{{ formatDate(user.fechaCreacion) }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-2">
-                  <button @click="resetPassword(user)" class="text-blue-600 dark:text-blue-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">Cambiar Contraseña</button>
-                  <button @click="toggleUserStatus(user)" class="text-yellow-600 dark:text-yellow-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">
+                  <button @click="resetPassword(user)" class="text-blue-600 dark:text-blue-400 hover:underline" :disabled="user.role === 'admin'">Cambiar Contraseña</button>
+                  <button @click="toggleUserStatus(user)" class="text-yellow-600 dark:text-yellow-400 hover:underline" :disabled="user.role === 'admin'">
                     {{ user.activo ? 'Desactivar' : 'Activar' }}
                   </button>
-                  <button @click="confirmDeleteUser(user)" class="text-red-600 dark:text-red-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">Eliminar</button>
+                  <button @click="confirmDeleteUser(user)" class="text-red-600 dark:text-red-400 hover:underline" :disabled="user.role === 'admin'">Eliminar</button>
                 </td>
               </tr>
             </tbody>
@@ -485,8 +483,6 @@ function getRoleName(role) {
   switch (role) {
     case 'admin':
       return 'Administrador'
-    case 'administrativo':
-      return 'Administrativo'
     case 'supervisor':
       return 'Supervisor'
     case 'tecnico':
