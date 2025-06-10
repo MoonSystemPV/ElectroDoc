@@ -521,6 +521,18 @@ function formatDate(date) {
   }
 }
 
+function formatDateInput(date) {
+  if (!date) return '';
+  if (date instanceof Date) {
+    return date.toISOString().slice(0, 10);
+  }
+  if (date.seconds) {
+    return new Date(date.seconds * 1000).toISOString().slice(0, 10);
+  }
+  // Si es string
+  return new Date(date).toISOString().slice(0, 10);
+}
+
 function openNewProjectModal() {
   showNewProjectModal.value = true
   error.value = null
@@ -569,7 +581,11 @@ async function addProject() {
 }
 
 function editProject(project) {
-  selectedProject.value = { ...project };
+  selectedProject.value = {
+    ...project,
+    fechaInicio: project.fechaInicio ? formatDateInput(project.fechaInicio) : '',
+    fechaFin: project.fechaFin ? formatDateInput(project.fechaFin) : ''
+  };
   showEditProjectModal.value = true;
   error.value = null;
 }

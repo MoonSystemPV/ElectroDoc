@@ -209,13 +209,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
-
-// Import the status modal component
-import ProjectStatusModal from '~/components/ProjectStatusModal.vue'
-
-definePageMeta({
-  middleware: 'auth'
-})
+import type { DocumentType } from '~/composables/useDocuments'
 
 // Composables
 const route = useRoute()
@@ -393,7 +387,7 @@ const loadDocuments = async () => {
   isLoadingDocuments.value = true
   
   try {
-    const docs = await getDocumentsByProject(id.value)
+    const docs = getDocumentsByProject.value
     documents.value = docs
   } catch (err) {
     console.error('Error loading documents:', err)
@@ -575,11 +569,11 @@ const uploadFile = async () => {
 }
 
 // Technician assignment functions
-const showStatusModal = () => {
+const showStatusModal = (type: string) => {
   showStatusChangeModal.value = true
 }
 
-const handleStatusUpdated = async ({ newStatus, comment }) => {
+const handleStatusUpdated = async ({ newStatus, comment }: { newStatus: string, comment: string }) => {
   // Refresh project data
   await loadProject()
 }
