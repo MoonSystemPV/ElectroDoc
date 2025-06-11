@@ -201,7 +201,8 @@ const form = ref({
   estado: 'activo',
   fechaInicio: '',
   fechaFin: '',
-  supervisor: ''
+  supervisor: '',
+  supervisorId: ''
 })
 
 const error = ref<string>('')
@@ -241,6 +242,7 @@ async function loadSupervisors() {
 // Seleccionar supervisor
 function selectSupervisor(supervisor: Supervisor) {
   form.value.supervisor = supervisor.nombre
+  form.value.supervisorId = supervisor.id
   showSupervisorModal.value = false
 }
 

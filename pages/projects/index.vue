@@ -3,14 +3,6 @@
     <div class="p-2 md:p-0">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Proyectos</h1>
-        <button 
-          v-if="canEditProjects"
-          @click="showNewProjectModal = true"
-          class="btn btn-primary"
-        >
-          <span class="material-icons mr-2">add</span>
-          Nuevo Proyecto
-        </button>
       </div>
 
       <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl p-8 transition-colors">
@@ -22,7 +14,7 @@
             <option value="completado">Completado</option>
             <option value="suspendido">Suspendido</option>
           </select>
-          <button @click="openNewProjectModal" class="ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
+          <button v-if="canEditProjects" @click="openNewProjectModal" class="ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
             <span class="material-icons">add</span> Nuevo Proyecto
           </button>
         </div>
@@ -37,7 +29,10 @@
         </div>
 
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="project in filteredProjects" :key="project.id" class="bg-zinc-50 dark:bg-zinc-900 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
+          <div v-for="project in filteredProjects" :key="project.id"
+            class="bg-zinc-50 dark:bg-zinc-900 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
+            :class="{'expired-project': isProjectExpired(project)}"
+          >
             <div class="p-6">
               <div class="flex items-start justify-between mb-4">
                 <div>
@@ -82,27 +77,18 @@
                 </button>
                 <button 
                   v-if="canEditProjects"
-                  @click="showStatusModal = true; selectedProjectForStatus = project"
+                  @click="!isProjectExpired(project) && (showStatusModal = true, selectedProjectForStatus = project)"
                   class="text-sm px-3 py-1 rounded-full transition-colors"
                   :class="{
                     'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': project.estado === 'activo',
                     'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400': project.estado === 'completado',
-                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': project.estado === 'cancelado'
+                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': project.estado === 'cancelado',
+                    'cursor-not-allowed opacity-60': isProjectExpired(project)
                   }"
+                  :disabled="isProjectExpired(project)"
                 >
-                  {{ getStatusText(project.estado) }}
+                  {{ isProjectExpired(project) ? 'Caducado' : getStatusText(project.estado) }}
                 </button>
-                <span 
-                  v-else
-                  class="text-sm px-3 py-1 rounded-full"
-                  :class="{
-                    'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': project.estado === 'activo',
-                    'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400': project.estado === 'completado',
-                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': project.estado === 'cancelado'
-                  }"
-                >
-                  {{ getStatusText(project.estado) }}
-                </span>
               </div>
             </div>
           </div>
@@ -345,29 +331,32 @@
       <!-- Modal de Opciones de Estado -->
       <div v-if="showStatusModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl max-w-md w-full p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Cambiar Estado</h3>
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">Cambiar Estado</h3>
             <button @click="showStatusModal = false" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
               <span class="material-icons">close</span>
             </button>
           </div>
-          
           <div v-if="!canEditProjects" class="text-red-500 dark:text-red-400 mb-4">
             Solo los supervisores y administradores pueden cambiar el estado del proyecto
           </div>
-          
-          <div v-else class="space-y-3">
+          <div v-else class="flex flex-col gap-3 mb-4">
             <button
-              v-for="status in ['activo', 'completado', 'cancelado']"
-              :key="status"
-              @click="updateProjectStatus(selectedProjectForStatus, status)"
-              class="w-full px-4 py-2 rounded-lg text-left transition-colors"
-              :class="{
-                'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300': selectedProjectForStatus?.estado === status,
-                'hover:bg-gray-50 dark:hover:bg-zinc-700': selectedProjectForStatus?.estado !== status
-              }"
+              v-for="option in statusOptions"
+              :key="option.value"
+              @click="updateProjectStatus(selectedProjectForStatus, option.value)"
+              type="button"
+              :class="[
+                'flex items-center justify-center gap-2 w-full py-3 rounded-lg font-semibold transition-all border',
+                selectedProjectForStatus?.estado === option.value
+                  ? option.activeClass
+                  : option.inactiveClass,
+                selectedProjectForStatus?.estado === option.value ? 'ring-2 ring-blue-400 dark:ring-blue-300' : ''
+              ]"
             >
-              {{ status.charAt(0).toUpperCase() + status.slice(1) }}
+              <span class="material-icons" :class="option.iconClass">{{ option.icon }}</span>
+              <span>{{ option.label }}</span>
+              <span v-if="selectedProjectForStatus?.estado === option.value" class="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs dark:bg-blue-900/30 dark:text-blue-300">Actual</span>
             </button>
           </div>
         </div>
@@ -523,6 +512,18 @@ function formatDate(date) {
   }
 }
 
+function formatDateInput(date) {
+  if (!date) return '';
+  if (date instanceof Date) {
+    return date.toISOString().slice(0, 10);
+  }
+  if (date.seconds) {
+    return new Date(date.seconds * 1000).toISOString().slice(0, 10);
+  }
+  // Si es string
+  return new Date(date).toISOString().slice(0, 10);
+}
+
 function openNewProjectModal() {
   showNewProjectModal.value = true
   error.value = null
@@ -538,6 +539,12 @@ function openNewProjectModal() {
   }
 }
 
+function parseLocalDate(dateString) {
+  if (!dateString) return null;
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0); // 12:00 para evitar problemas de timezone
+}
+
 async function addProject() {
   isLoading.value = true;
   error.value = null;
@@ -550,8 +557,8 @@ async function addProject() {
     const projectData = {
       ...newProject.value,
       fechaCreacion: Timestamp.now(),
-      fechaInicio: Timestamp.fromDate(new Date(newProject.value.fechaInicio)),
-      fechaFin: Timestamp.fromDate(new Date(newProject.value.fechaFin)),
+      fechaInicio: newProject.value.fechaInicio ? Timestamp.fromDate(parseLocalDate(newProject.value.fechaInicio)) : null,
+      fechaFin: newProject.value.fechaFin ? Timestamp.fromDate(parseLocalDate(newProject.value.fechaFin)) : null,
       tecnicosAsignados: []
     };
     await addDoc(collection(db, 'projects'), projectData);
@@ -565,7 +572,11 @@ async function addProject() {
 }
 
 function editProject(project) {
-  editProjectData.value = { ...project };
+  selectedProject.value = {
+    ...project,
+    fechaInicio: project.fechaInicio ? formatDateInput(project.fechaInicio) : '',
+    fechaFin: project.fechaFin ? formatDateInput(project.fechaFin) : ''
+  };
   showEditProjectModal.value = true;
   error.value = null;
 }
@@ -581,19 +592,19 @@ function viewProjectDetails(project) {
   loadProjectFolders()
 }
 
-async function saveEditProject() {
+async function handleProjectUpdate(projectData) {
   isLoading.value = true;
   try {
-    const refDoc = doc(db, 'projects', editProjectData.value.id);
+    const refDoc = doc(db, 'projects', selectedProject.value.id);
     await updateDoc(refDoc, {
-      ...editProjectData.value,
-      fechaInicio: editProjectData.value.fechaInicio ? Timestamp.fromDate(new Date(editProjectData.value.fechaInicio)) : null,
-      fechaFin: editProjectData.value.fechaFin ? Timestamp.fromDate(new Date(editProjectData.value.fechaFin)) : null,
+      ...projectData,
+      fechaInicio: projectData.fechaInicio ? Timestamp.fromDate(parseLocalDate(projectData.fechaInicio)) : null,
+      fechaFin: projectData.fechaFin ? Timestamp.fromDate(parseLocalDate(projectData.fechaFin)) : null,
     });
     showEditProjectModal.value = false;
     await loadProjects();
   } catch (e) {
-    error.value = 'Error al editar proyecto';
+    error.value = 'Error al actualizar proyecto';
   } finally {
     isLoading.value = false;
   }
@@ -825,4 +836,53 @@ const filteredProjects = computed(() => {
     return matchesStatus && matchesSearch
   })
 })
+
+function isProjectExpired(project) {
+  if (!project.fechaFin && !project.fechaVencimiento) return false;
+  const fin = project.fechaFin || project.fechaVencimiento;
+  const finDate = fin?.toDate ? fin.toDate() : new Date(fin);
+  const today = new Date();
+  finDate.setHours(0,0,0,0);
+  today.setHours(0,0,0,0);
+  return finDate <= today;
+}
+
+const statusOptions = [
+  {
+    value: 'activo',
+    label: 'Activo',
+    icon: 'play_circle',
+    iconClass: 'text-green-500',
+    activeClass: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300',
+    inactiveClass: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 hover:bg-green-50 dark:hover:bg-green-900/20',
+  },
+  {
+    value: 'completado',
+    label: 'Completado',
+    icon: 'check_circle',
+    iconClass: 'text-blue-500',
+    activeClass: 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300',
+    inactiveClass: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 hover:bg-blue-50 dark:hover:bg-blue-900/20',
+  },
+  {
+    value: 'cancelado',
+    label: 'Cancelado',
+    icon: 'cancel',
+    iconClass: 'text-red-500',
+    activeClass: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300',
+    inactiveClass: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-900/20',
+  },
+]
 </script> 
+
+<style scoped>
+.expired-project {
+  border: 3px solid #ef4444 !important;
+  animation: blink-red 1s infinite;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3);
+}
+@keyframes blink-red {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 10px 8px rgba(239, 68, 68, 0.7); }
+}
+</style> 

@@ -1,14 +1,13 @@
 <template>
   <MainLayout>
     <div class="p-2 md:p-0">
-      <h1 class="text-3xl font-extrabold mb-8 text-pink-500 dark:text-pink-400 tracking-tight">Usuarios</h1>
+      <h1 class="text-3xl font-extrabold mb-8 text-blue-500 dark:text-white tracking-tight">Usuarios</h1>
       <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl p-8 transition-colors">
         <div class="flex flex-col md:flex-row md:items-center gap-4 mb-6">
           <input v-model="searchQuery" type="text" placeholder="Buscar usuarios..." class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-72" />
           <select v-model="filterRole" class="px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-pink-400 focus:ring-2 focus:ring-pink-400 outline-none transition w-full md:w-60">
             <option value="all">Todos los roles</option>
             <option value="admin">Administradores</option>
-            <option value="administrativo">Administrativos</option>
             <option value="supervisor">Supervisores</option>
             <option value="tecnico">Técnicos</option>
           </select>
@@ -56,9 +55,8 @@
                   <span class="px-3 py-1 rounded-full text-xs font-semibold"
                     :class="{
                       'bg-pink-100 dark:bg-pink-500 text-pink-700 dark:text-white': user.role === 'admin',
-                      'bg-purple-100 dark:bg-purple-500 text-purple-700 dark:text-white': user.role === 'administrativo',
-                      'bg-cyan-100 dark:bg-cyan-500 text-cyan-700 dark:text-white': user.role === 'supervisor',
-                      'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': user.role === 'tecnico'
+                      'bg-purple-100 dark:bg-purple-500 text-purple-700 dark:text-white': user.role === 'supervisor',
+                      'bg-cyan-100 dark:bg-cyan-500 text-cyan-700 dark:text-white': user.role === 'tecnico'
                     }">
                     {{ getRoleName(user.role) }}
                   </span>
@@ -74,11 +72,11 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-300">{{ formatDate(user.fechaCreacion) }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-2">
-                  <button @click="resetPassword(user)" class="text-blue-600 dark:text-blue-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">Cambiar Contraseña</button>
-                  <button @click="toggleUserStatus(user)" class="text-yellow-600 dark:text-yellow-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">
+                  <button @click="resetPassword(user)" class="text-blue-600 dark:text-blue-400 hover:underline" :disabled="user.role === 'admin'">Cambiar Contraseña</button>
+                  <button @click="toggleUserStatus(user)" class="text-yellow-600 dark:text-yellow-400 hover:underline" :disabled="user.role === 'admin'">
                     {{ user.activo ? 'Desactivar' : 'Activar' }}
                   </button>
-                  <button @click="confirmDeleteUser(user)" class="text-red-600 dark:text-red-400 hover:underline" :disabled="user.role === 'admin' || user.role === 'administrativo'">Eliminar</button>
+                  <button @click="confirmDeleteUser(user)" class="text-red-600 dark:text-red-400 hover:underline" :disabled="user.role === 'admin'">Eliminar</button>
                 </td>
               </tr>
             </tbody>
@@ -267,12 +265,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import MainLayout from '~/components/layout/MainLayout.vue'
+import { updateDoc, doc } from 'firebase/firestore'
+import { db } from '~/utils/firebase'
 
 definePageMeta({
   middleware: ['auth', 'admin']
 })
 
-const { user, createUser, changePassword, getAllUsers, deleteUser, isLoading: authLoading, error: authError } = useAuth()
+const { user, createUser, changePassword, getAllUsers, deleteUser, isLoading: authLoading, error: authError, updateUserStatus } = useAuth()
 const { showToast } = useToast()
 
 // Estado
@@ -428,17 +428,11 @@ async function handlePasswordChange() {
 async function toggleUserStatus(user) {
   isLoading.value = true
   error.value = null
-  
+
   try {
-    // TODO: Implementar la actualización del estado del usuario en Firebase
-    const success = await updateUserStatus(user.id, !user.activo)
-    
-    if (success) {
-      showToast(`Usuario ${user.nombre} ${user.activo ? 'desactivado' : 'activado'} correctamente`, 'success')
-      await loadUsers() // Recargar la lista de usuarios
-    } else {
-      error.value = 'Error al cambiar el estado del usuario'
-    }
+    await updateDoc(doc(db, 'users', user.id || user.uid), { activo: !user.activo })
+    showToast(`Usuario ${user.nombre} ${user.activo ? 'desactivado' : 'activado'} correctamente`, 'success')
+    await loadUsers() // Recargar la lista de usuarios
   } catch (err) {
     console.error('Error al cambiar estado del usuario:', err)
     error.value = 'Error al cambiar estado del usuario'
@@ -454,17 +448,14 @@ function confirmDeleteUser(user) {
 
 async function handleDeleteUser() {
   if (!selectedUser.value) return
-  
   isLoading.value = true
   error.value = null
-  
   try {
-    const success = await deleteUser(selectedUser.value.id)
-    
+    const success = await deleteUser(selectedUser.value.id || selectedUser.value.uid)
     if (success) {
       showDeleteModal.value = false
       showToast(`Usuario ${selectedUser.value.nombre} eliminado correctamente.`, 'error')
-      users.value = users.value.filter(u => u.id !== selectedUser.value.id)
+      users.value = users.value.filter(u => (u.id || u.uid) !== (selectedUser.value.id || selectedUser.value.uid))
       selectedUser.value = null
     } else {
       error.value = authError.value
@@ -492,8 +483,6 @@ function getRoleName(role) {
   switch (role) {
     case 'admin':
       return 'Administrador'
-    case 'administrativo':
-      return 'Administrativo'
     case 'supervisor':
       return 'Supervisor'
     case 'tecnico':
