@@ -11,7 +11,7 @@
               {{ project.nombre }}
             </option>
           </select>
-          <button @click="showAddDocumentModal = true" class="ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
+          <button @click="openAddDocumentModal" class="ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2 rounded-xl shadow transition">
             <span class="material-icons">add</span> Nuevo Documento
           </button>
         </div>
@@ -21,117 +21,22 @@
           <p class="mt-2 text-zinc-600 dark:text-zinc-400">Cargando documentos...</p>
         </div>
         
-        <div v-else-if="filteredDocuments.length === 0" class="text-center p-8">
+        <div v-else-if="documents.length === 0" class="text-center p-8">
           <p class="text-lg text-zinc-500 dark:text-zinc-400">No se encontraron documentos</p>
         </div>
         
-        <div v-else>
-          <!-- Vista de tabla para pantallas medianas y grandes -->
-          <div class="hidden md:block overflow-x-auto">
-            <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
-              <thead>
-                <tr>
-                  <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Documento</th>
-                  <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Proyecto</th>
-                  <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Estado</th>
-                  <th class="px-6 py-3 text-left text-xs font-bold text-zinc-400 uppercase tracking-wider">Última Actualización</th>
-                  <th class="px-6 py-3"></th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                <tr v-for="doc in filteredDocuments" :key="doc.id" class="hover:bg-zinc-50 dark:hover:bg-zinc-700 transition">
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-3">
-                      <span class="material-icons text-xl"
-                        :class="{
-                          'text-blue-500': doc.type === 'pdf',
-                          'text-green-500': doc.type === 'excel',
-                          'text-yellow-500': doc.type === 'word'
-                        }">
-                        {{ getDocumentIcon(doc.type) }}
-                      </span>
-                      <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ doc.name }}</span>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-zinc-700 dark:text-zinc-100">{{ doc.project }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-3 py-1 rounded-full text-xs font-semibold"
-                      :class="{
-                        'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': doc.status === 'approved',
-                        'bg-yellow-100 dark:bg-yellow-500 text-yellow-700 dark:text-white': doc.status === 'pending',
-                        'bg-red-100 dark:bg-red-500 text-red-700 dark:text-white': doc.status === 'rejected',
-                        'bg-blue-100 dark:bg-blue-500 text-blue-700 dark:text-white': doc.status === 'draft'
-                      }">
-                      {{ getStatusText(doc.status) }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-zinc-500 dark:text-zinc-300">{{ formatDate(doc.updatedAt) }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div class="flex justify-end gap-2">
-                      <button @click="editDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
-                        <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">edit</span>
-                      </button>
-                      <button @click="downloadDocument(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
-                        <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">download</span>
-                      </button>
-                      <button @click="showDocumentOptions(doc)" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
-                        <span class="material-icons text-zinc-500 dark:text-zinc-400 text-sm">more_vert</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          
-          <!-- Vista de tarjetas para dispositivos móviles -->
-          <div class="md:hidden space-y-4">
-            <div v-for="doc in filteredDocuments" :key="doc.id" class="bg-white dark:bg-zinc-900 rounded-lg shadow p-4">
-              <div class="flex justify-between items-start mb-3">
-                <div class="flex items-center gap-3">
-                  <span class="material-icons text-xl"
-                    :class="{
-                      'text-blue-500': doc.type === 'pdf',
-                      'text-green-500': doc.type === 'excel',
-                      'text-yellow-500': doc.type === 'word'
-                    }">
-                    {{ getDocumentIcon(doc.type) }}
-                  </span>
-                  <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ doc.name }}</span>
-                </div>
-                <span class="px-3 py-1 rounded-full text-xs font-semibold"
-                  :class="{
-                    'bg-green-100 dark:bg-green-500 text-green-700 dark:text-white': doc.status === 'approved',
-                    'bg-yellow-100 dark:bg-yellow-500 text-yellow-700 dark:text-white': doc.status === 'pending',
-                    'bg-red-100 dark:bg-red-500 text-red-700 dark:text-white': doc.status === 'rejected',
-                    'bg-blue-100 dark:bg-blue-500 text-blue-700 dark:text-white': doc.status === 'draft'
-                  }">
-                  {{ getStatusText(doc.status) }}
-                </span>
-              </div>
-              
-              <div class="space-y-1 mb-3">
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                  <span class="font-medium text-zinc-700 dark:text-zinc-300">Proyecto:</span> {{ doc.project }}
-                </p>
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                  <span class="font-medium text-zinc-700 dark:text-zinc-300">Actualizado:</span> {{ formatDate(doc.updatedAt) }}
-                </p>
-              </div>
-              
-              <div class="flex justify-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
-                <button @click="editDocument(doc)" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                  <span class="material-icons text-zinc-500 dark:text-zinc-400">edit</span>
-                </button>
-                <button @click="downloadDocument(doc)" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                  <span class="material-icons text-zinc-500 dark:text-zinc-400">download</span>
-                </button>
-                <button @click="showDocumentOptions(doc)" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800">
-                  <span class="material-icons text-zinc-500 dark:text-zinc-400">more_vert</span>
-                </button>
-              </div>
-            </div>
-          </div>
+        <div v-else class="flex flex-col space-y-2">
+          <DocumentCard
+            v-for="doc in filteredDocuments"
+            :key="doc.id"
+            :document="doc"
+            :can-validate="isAdmin || isSupervisor"
+            @view="viewDocument"
+            @download="downloadDocument"
+            @validate="validateDocument"
+            @reject="rejectDocument"
+            class="w-full"
+          />
         </div>
         
         <!-- Paginación -->
@@ -175,78 +80,22 @@
 
       <!-- Modal de Nuevo Documento -->
       <div v-if="showAddDocumentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl max-w-md w-full p-6">
-          <h2 class="text-xl font-bold mb-4 text-zinc-900 dark:text-zinc-100">Nuevo Documento</h2>
-          
-          <div v-if="error" class="bg-red-50 dark:bg-red-900/50 border-l-4 border-red-400 p-4 mb-4">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <span class="material-icons text-red-400">error</span>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
-              </div>
-            </div>
-            </div>
-            
-          <form @submit.prevent="addDocument">
-            <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Nombre del Documento</label>
-              <input
-                  v-model="newDocument.name" 
-                type="text"
-              required
-                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition"
-                  placeholder="Nombre del documento"
-              />
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Proyecto</label>
-                <select 
-                  v-model="newDocument.project" 
-                  required 
-                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition"
-                >
-                  <option v-for="project in projects" :key="project.id" :value="project.id">
-                    {{ project.nombre }}
-                  </option>
-                </select>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Tipo de Documento</label>
-                <select 
-                  v-model="newDocument.type" 
-              required
-                  class="w-full px-4 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 outline-none transition"
-                >
-                  <option value="pdf">PDF</option>
-                  <option value="excel">Excel</option>
-                  <option value="word">Word</option>
-                </select>
-          </div>
+        <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl max-w-2xl w-full p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Nuevo Documento</h2>
+            <button 
+              @click="showAddDocumentModal = false"
+              class="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            >
+              <span class="material-icons">close</span>
+            </button>
         </div>
         
-        <div class="mt-6 flex justify-end space-x-3">
-          <button
-            type="button"
-                @click="showAddDocumentModal = false" 
-                class="px-4 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition"
-                :disabled="isLoading"
-          >
-                <span v-if="isLoading" class="material-icons animate-spin mr-1 text-sm">autorenew</span>
-                Crear Documento
-          </button>
-        </div>
-      </form>
+          <DocumentUpload
+            :project-id="newDocument.project"
+            @upload-success="handleUploadSuccess"
+            @cancel="showAddDocumentModal = false"
+          />
     </div>
   </div>
     </div>
@@ -255,11 +104,18 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import MainLayout from '~/components/layout/MainLayout.vue'
+import DocumentUpload from '~/components/documents/DocumentUpload.vue'
+import DocumentCard from '~/components/documents/DocumentCard.vue'
 import { useProjectStore } from '~/stores/projects'
+import { useDocumentStore } from '~/stores/documents'
 import { useProjects } from '~/composables/useProjects'
+import { useDocuments } from '~/composables/useDocuments'
+import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
+import { getFirestore, collection, query, getDocs, orderBy, Timestamp } from 'firebase/firestore'
 
 definePageMeta({
   middleware: ['auth']
@@ -273,7 +129,11 @@ const filterProject = ref('')
 const showAddDocumentModal = ref(false)
 const showEditProjectModal = ref(false)
 const projectStore = useProjectStore()
+const documentStore = useDocumentStore()
 const { createProject, updateProject } = useProjects()
+const { user,isAdmin, isSupervisor } = useAuth()
+const { showToast } = useToast()
+const { validateDocument: validateDoc, rejectDocument: rejectDoc, fetchDocumentsFromFirestore } = useDocuments()
 
 // Estado para el nuevo proyecto
 const newProject = ref({
@@ -289,8 +149,57 @@ const newProject = ref({
 // Estado para el proyecto a editar
 const projectToEdit = ref(null)
 
+// Estado para el modal y el nuevo documento
+const newDocument = ref({ project: '' })
+
+const { $firebase } = useNuxtApp()
+
+// Helper functions
+function formatDate(date) {
+  if (!date) return ''
+  
+  try {
+    // Si es un Timestamp de Firestore
+    if (date instanceof Timestamp) {
+      return format(date.toDate(), "d 'de' MMMM, yyyy", { locale: es })
+    }
+    // Si es una fecha
+    if (date instanceof Date) {
+      return format(date, "d 'de' MMMM, yyyy", { locale: es })
+    }
+    // Si es un string
+    if (typeof date === 'string') {
+      return format(parseISO(date), "d 'de' MMMM, yyyy", { locale: es })
+    }
+    return ''
+  } catch (err) {
+    console.error('Error formateando fecha:', err)
+    return ''
+  }
+}
+
+function getDocumentIcon(tipo) {
+  switch(tipo?.toLowerCase()) {
+    case 'te1':
+    case 'te2':
+    case 'pdf':
+      return 'picture_as_pdf'
+    case 'plano':
+      return 'architecture'
+    case 'informe':
+      return 'description'
+    case 'foto':
+      return 'image'
+    case 'certificado':
+      return 'verified'
+    default:
+      return 'insert_drive_file'
+  }
+}
+
 // Computed properties
-const projects = computed(() => projectStore.projects)
+const projects = computed(() => projectStore.projects || [])
+const documents = computed(() => documentStore.documents || [])
 
 const filteredDocuments = computed(() => {
   let filtered = documents.value
@@ -298,87 +207,28 @@ const filteredDocuments = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(doc => 
-      doc.name.toLowerCase().includes(query) || 
-      doc.project.toLowerCase().includes(query)
+      doc.nombre?.toLowerCase().includes(query)
     )
   }
   
   if (filterProject.value) {
-    const project = projects.value.find(p => p.id === filterProject.value)
-    if (project) {
-      filtered = filtered.filter(doc => doc.project === project.nombre)
-    }
+    filtered = filtered.filter(doc => doc.projectId === filterProject.value)
   }
   
   return filtered
 })
 
-// Sample data
-const documents = ref([
-  {
-    id: 1,
-    name: 'Especificaciones técnicas.pdf',
-    type: 'pdf',
-    project: 'Subestación Central',
-    updatedAt: new Date(2023, 10, 15),
-    status: 'approved'
-  },
-  {
-    id: 2,
-    name: 'Presupuesto final.xlsx',
-    type: 'excel',
-    project: 'Línea 220kV',
-    updatedAt: new Date(2023, 11, 1),
-    status: 'pending'
-  },
-  {
-    id: 3,
-    name: 'Planos eléctricos.pdf',
-    type: 'pdf',
-    project: 'Subestación Norte',
-    updatedAt: new Date(2023, 11, 5),
-    status: 'draft'
-  },
-  {
-    id: 4,
-    name: 'Informe de avance.docx',
-    type: 'word',
-    project: 'Línea 220kV',
-    updatedAt: new Date(2023, 10, 28),
-    status: 'approved'
-  },
-  {
-    id: 5,
-    name: 'Memoria de cálculo.pdf',
-    type: 'pdf',
-    project: 'Subestación Central',
-    updatedAt: new Date(2023, 11, 3),
-    status: 'rejected'
+// Cargar documentos desde Firestore
+const loadDocuments = async () => {
+  isLoading.value = true
+  try {
+    await fetchDocumentsFromFirestore()
+  } catch (err) {
+    console.error('Error al cargar documentos:', err)
+    error.value = 'Error al cargar los documentos'
+  } finally {
+    isLoading.value = false
   }
-])
-
-// Helper functions
-function getDocumentIcon(type) {
-  switch(type) {
-    case 'pdf': return 'picture_as_pdf'
-    case 'excel': return 'table_view'
-    case 'word': return 'description'
-    default: return 'insert_drive_file'
-  }
-}
-
-function getStatusText(status) {
-  switch(status) {
-    case 'approved': return 'Aprobado'
-    case 'pending': return 'Pendiente'
-    case 'rejected': return 'Rechazado'
-    case 'draft': return 'Borrador'
-    default: return status
-  }
-}
-
-function formatDate(date) {
-  return format(date, "d 'de' MMMM, yyyy", { locale: es })
 }
 
 // Funciones de negocio
@@ -403,7 +253,7 @@ async function addDocument() {
       status: 'draft'
     }
     
-    documents.value.push(newDoc)
+    documentStore.addDocument(newDoc)
     showAddDocumentModal.value = false
     newDocument.value = {
       name: '',
@@ -422,14 +272,43 @@ function editDocument(doc) {
   console.log('Editar documento:', doc)
 }
 
-function downloadDocument(doc) {
-  // Implementar lógica de descarga
-  console.log('Descargar documento:', doc)
+// Funciones para manejar documentos
+const viewDocument = (doc) => {
+  if (doc.url && typeof doc.url === 'string' && doc.url.startsWith('http')) {
+    window.open(doc.url, '_blank');
+  } else {
+    showToast('El documento no tiene un enlace válido para visualizar.', 'error');
+  }
 }
 
-function showDocumentOptions(doc) {
-  // Implementar lógica de opciones
-  console.log('Mostrar opciones del documento:', doc)
+const downloadDocument = (doc) => {
+  const link = document.createElement('a')
+  link.href = doc.url
+  link.download = doc.nombre
+  link.target = '_blank'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+const validateDocument = async (doc) => {
+  try {
+    await validateDoc(doc.id)
+    showToast('Documento validado correctamente', 'success')
+  } catch (error) {
+    console.error('Error al validar documento:', error)
+    showToast('Error al validar el documento', 'error')
+  }
+}
+
+const rejectDocument = async (doc) => {
+  try {
+    await rejectDoc(doc.id)
+    showToast('Documento rechazado correctamente', 'success')
+  } catch (error) {
+    console.error('Error al rechazar documento:', error)
+    showToast('Error al rechazar el documento', 'error')
+  }
 }
 
 // Funciones para manejar proyectos
@@ -496,16 +375,33 @@ function editProject(project) {
   showEditProjectModal.value = true
 }
 
-// Cargar proyectos al montar el componente
+// Cargar documentos al montar el componente
 onMounted(async () => {
-  isLoading.value = true
-  try {
-    await projectStore.loadDemoProjects()
-  } catch (err) {
-    console.error('Error al cargar proyectos:', err)
-    error.value = 'Error al cargar proyectos'
-  } finally {
-    isLoading.value = false
-  }
+  console.log('Componente montado, verificando autenticación...');
+  console.log('Usuario autenticado:', user);
+  console.log('Es admin:', isAdmin.value);
+  console.log('Es supervisor:', isSupervisor.value);
+  
+  console.log('Iniciando carga de documentos...');
+  await loadDocuments();
+  console.log('Documentos cargados:', documents.value);
 })
+
+// Actualizar la función handleUploadSuccess para recargar los documentos
+const handleUploadSuccess = async (document) => {
+  showAddDocumentModal.value = false
+  await loadDocuments()
+}
+
+// Función para abrir el modal
+const openAddDocumentModal = () => {
+  if (filterProject.value) {
+    newDocument.value.project = filterProject.value
+  } else if (projects.value.length > 0) {
+    newDocument.value.project = projects.value[0].id
+  } else {
+    newDocument.value.project = ''
+  }
+  showAddDocumentModal.value = true
+}
 </script> 

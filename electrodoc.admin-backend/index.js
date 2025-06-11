@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const path = require('path');
+const dotenv = require('dotenv');
+const cloudinaryRoutes = require('./cloudinary');
+
+dotenv.config(); // Asegura que las variables de entorno estén disponibles
 
 // Cambia el nombre si tu archivo de credenciales tiene otro nombre
 const serviceAccount = require(path.join(__dirname, 'serviceAccountKey.json'));
@@ -130,6 +134,8 @@ app.post('/delete-user', async (req, res) => {
     res.status(400).json({ success: false, error: error.message });
   }
 });
+
+app.use('/api/cloudinary', cloudinaryRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

@@ -6,23 +6,23 @@ export const useAuthStore = defineStore('auth', {
     user: null as User | null,
     initialized: false
   }),
-  
+
   actions: {
     setUser(user: User) {
       this.user = user
       this.initialized = true
     },
-    
+
     clearUser() {
       this.user = null
       this.initialized = true
     },
-    
+
     setInitialized(value: boolean) {
       this.initialized = value
     }
   },
-  
+
   getters: {
     isAuthenticated: (state) => !!state.user,
     isAdmin: (state) => state.user?.role === 'admin' || state.user?.role === 'administrativo',
