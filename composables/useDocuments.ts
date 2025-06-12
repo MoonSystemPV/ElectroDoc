@@ -537,8 +537,10 @@ export function useDocuments() {
       }
 
       const documentData = docSnap.data();
-      // Extraer el public_id de Cloudinary
-      const publicId = documentData.storagePath || (documentData.url.split('/').slice(-1)[0].split('.')[0]);
+      const publicId = documentData.storagePath;
+      if (!publicId) {
+        throw new Error('No se encontró el public_id (storagePath) para eliminar en Cloudinary');
+      }
 
       // Llamar al endpoint backend para eliminar de Cloudinary
       const response = await fetch('/api/delete-cloudinary', {
@@ -547,13 +549,14 @@ export function useDocuments() {
         body: JSON.stringify({ public_id: publicId })
       });
       const result = await response.json();
-      if (!result.result || result.result !== 'ok') {
-        throw new Error('Error al eliminar de Cloudinary');
+      console.log('[DEBUG] Respuesta de Cloudinary:', result);
+
+      if (result.result !== 'ok' && result.result !== 'not found') {
+        throw new Error('Error al eliminar de Cloudinary: ' + (result.result || JSON.stringify(result)));
       }
 
       // Eliminar de Firestore
       await deleteDoc(docRef);
-      // Actualizar el store
       documentStore.removeDocument(documentId);
       return true;
     } catch (error) {

@@ -21,16 +21,23 @@ export default defineEventHandler(async (event: H3Event) => {
     formData.append('timestamp', timestamp.toString())
     formData.append('signature', signature)
 
+    // Detectar tipo de recurso (image o raw)
+    // Si el public_id tiene extensión de imagen usa image, si no usa raw
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+    const isImage = imageExtensions.some(ext => public_id.toLowerCase().endsWith(ext));
+    const resourceType = isImage ? 'image' : 'raw';
+
     // LOGS DE DEPURACIÓN
     console.log('Intentando eliminar en Cloudinary:', {
         public_id,
         cloudName,
         apiKey,
         timestamp,
-        signature
+        signature,
+        resourceType
     })
 
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`, {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/destroy`, {
         method: 'POST',
         body: formData
     })
