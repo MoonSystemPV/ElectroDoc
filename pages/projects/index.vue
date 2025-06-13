@@ -438,7 +438,9 @@
                 </div>
                 <div v-else>
                   <ul class="divide-y divide-gray-200">
+
                     <li v-for="doc in projectDocumentsModal" :key="doc.id" class="py-3 flex items-center justify-between">
+
                       <div class="flex items-center">
                         <span class="material-icons text-gray-400 mr-2">{{ getDocumentIcon(doc.tipo) }}</span>
                         <div class="text-sm max-w-xs truncate">
@@ -454,9 +456,11 @@
                           </span>
                         </div>
                       </div>
+
                       <a v-if="doc.url" :href="doc.url" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center">
                         <span class="material-icons mr-1">download</span>Descargar
                       </a>
+
                     </li>
                   </ul>
                 </div>
@@ -521,6 +525,7 @@ const newUrl = ref({
   name: '',
   url: ''
 })
+
 
 // Datos para nuevo proyecto
 const newProject = ref({

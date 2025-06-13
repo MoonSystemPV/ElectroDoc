@@ -202,7 +202,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['view', 'download', 'validate', 'reject'])
+const emit = defineEmits(['view', 'download', 'validate', 'reject', 'update'])
 
 const { user, isAdmin, isSupervisor } = useAuth()
 const { validateDocument, rejectDocument, deleteDocument: deleteDoc } = useDocuments()
@@ -285,6 +285,7 @@ async function deleteDocument() {
     await deleteDoc(props.document.id)
     showDeleteModal.value = false
     showToast('Documento eliminado correctamente', 'success')
+    emit('update')
   } catch (error) {
     console.error('Error al eliminar documento:', error)
     showToast('Error al eliminar el documento', 'error')
