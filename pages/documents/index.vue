@@ -91,6 +91,14 @@
             </button>
         </div>
         
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Proyecto</label>
+            <select v-model="newDocument.projectId" required class="input-modern w-full">
+              <option value="" disabled>Selecciona un proyecto</option>
+              <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+            </select>
+          </div>
+          
           <DocumentUpload
             :project-id="newDocument.project"
             @upload-success="handleUploadSuccess"
@@ -115,7 +123,8 @@ import { useProjects } from '~/composables/useProjects'
 import { useDocuments } from '~/composables/useDocuments'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
-import { getFirestore, collection, query, getDocs, orderBy, Timestamp } from 'firebase/firestore'
+import { getFirestore, collection, query, getDocs, orderBy, Timestamp, onSnapshot } from 'firebase/firestore'
+import { db } from '@/utils/firebase'
 
 definePageMeta({
   middleware: ['auth']
@@ -151,6 +160,8 @@ const projectToEdit = ref(null)
 
 // Estado para el modal y el nuevo documento
 const newDocument = ref({ project: '' })
+
+const projects = ref([])
 
 const { $firebase } = useNuxtApp()
 
@@ -198,7 +209,6 @@ function getDocumentIcon(tipo) {
 }
 
 // Computed properties
-const projects = computed(() => projectStore.projects || [])
 const documents = computed(() => documentStore.documents || [])
 
 const filteredDocuments = computed(() => {
@@ -385,6 +395,10 @@ onMounted(async () => {
   console.log('Iniciando carga de documentos...');
   await loadDocuments();
   console.log('Documentos cargados:', documents.value);
+
+  onSnapshot(collection(db, 'projects'), (querySnapshot) => {
+    projects.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+  })
 })
 
 // Actualizar la función handleUploadSuccess para recargar los documentos
