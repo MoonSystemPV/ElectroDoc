@@ -35,6 +35,7 @@
             @download="downloadDocument"
             @validate="validateDocument"
             @reject="rejectDocument"
+            @update="loadDocuments"
             class="w-full"
           />
         </div>
@@ -79,33 +80,73 @@
       </div>
 
       <!-- Modal de Nuevo Documento -->
-      <div v-if="showAddDocumentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl max-w-2xl w-full p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">Nuevo Documento</h2>
-            <button 
-              @click="showAddDocumentModal = false"
-              class="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-            >
+      <transition name="modal-fade">
+        <div v-if="showAddDocumentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div class="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-lg w-full p-8 relative animate-modal-in border border-blue-100 dark:border-zinc-800">
+            <button @click="showAddDocumentModal = false" class="absolute top-4 right-4 text-zinc-400 hover:text-blue-600 text-2xl">
               <span class="material-icons">close</span>
             </button>
-        </div>
-        
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Proyecto</label>
-            <select v-model="newDocument.projectId" required class="input-modern w-full">
-              <option value="" disabled>Selecciona un proyecto</option>
-              <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.nombre }}</option>
-            </select>
+            <div class="flex items-center gap-3 mb-6">
+              <span class="material-icons text-blue-500 text-3xl">upload_file</span>
+              <h2 class="text-2xl font-extrabold text-blue-600 dark:text-blue-300 tracking-tight">Nuevo Documento</h2>
+            </div>
+            <form @submit.prevent="handleUpload" class="space-y-5">
+              <!-- Tipo de Documento -->
+              <div>
+                <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Tipo de Documento</label>
+                <select v-model="newDocument.tipo" required class="input-modern w-full">
+                  <option value="" disabled>Selecciona un tipo</option>
+                  <option v-for="tipo in tiposDocumento" :key="tipo.value" :value="tipo.value">{{ tipo.label }}</option>
+                </select>
+              </div>
+              <!-- Proyecto -->
+              <div>
+                <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Proyecto</label>
+                <select v-model="newDocument.projectId" required class="input-modern w-full">
+                  <option value="" disabled>Selecciona un proyecto</option>
+                  <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+                </select>
+              </div>
+              <!-- Nombre personalizado -->
+              <div>
+                <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Nombre personalizado (opcional)</label>
+                <input v-model="newDocument.customName" type="text" class="input-modern w-full" placeholder="Dejar en blanco para usar nombre original" />
+              </div>
+              <!-- Archivo -->
+              <div>
+                <label class="block text-xs font-bold text-zinc-500 mb-1 uppercase tracking-wider">Archivo</label>
+                <div
+                  class="file-drop-area input-modern w-full flex flex-col items-center justify-center text-center py-8 border-2 border-dashed border-blue-200 dark:border-blue-900 rounded-2xl cursor-pointer transition hover:border-blue-400 bg-blue-50/30 dark:bg-blue-900/10"
+                  @dragover.prevent="isDragging = true"
+                  @dragleave.prevent="isDragging = false"
+                  @drop.prevent="onFileDrop"
+                  @click="triggerFileInput"
+                  :class="{ 'border-blue-500': isDragging }"
+                >
+                  <input ref="fileInput" type="file" class="hidden" @change="onFileChange" :accept="acceptTypes" />
+                  <span class="material-icons text-5xl text-blue-400 mb-2">cloud_upload</span>
+                  <span class="text-zinc-500 dark:text-zinc-400 text-sm">Arrastra y suelta un archivo aquí o haz clic para seleccionarlo</span>
+                  <span class="text-xs text-zinc-400 mt-1">PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (max. 10MB)</span>
+                  <div v-if="newDocument.file" class="mt-4 text-blue-600 dark:text-blue-300 text-sm">
+                    <span class="material-icons align-middle mr-1">attach_file</span>
+                    {{ newDocument.file.name }}
+                    <button type="button" @click.stop="removeFile" class="ml-2 text-red-500 hover:text-red-700">
+                      <span class="material-icons text-base">close</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="flex justify-end gap-3 mt-8">
+                <button type="button" @click="showAddDocumentModal = false" class="px-5 py-2 rounded-xl text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">Cancelar</button>
+                <button type="submit" class="px-6 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-blue-700 text-white font-bold shadow-lg hover:scale-105 transition-all duration-200 flex items-center gap-2">
+                  <span class="material-icons text-base">save</span>
+                  Subir Documento
+                </button>
+              </div>
+            </form>
           </div>
-          
-          <DocumentUpload
-            :project-id="newDocument.project"
-            @upload-success="handleUploadSuccess"
-            @cancel="showAddDocumentModal = false"
-          />
-    </div>
-  </div>
+        </div>
+      </transition>
     </div>
   </MainLayout>
 </template>
@@ -164,6 +205,27 @@ const newDocument = ref({ project: '' })
 const projects = ref([])
 
 const { $firebase } = useNuxtApp()
+
+const isDragging = ref(false)
+const fileInput = ref(null)
+const acceptTypes = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png'
+
+const tiposDocumento = [
+  { value: 'TE1', label: 'Formulario TE1' },
+  { value: 'TE2', label: 'Formulario TE2' },
+  { value: 'plano', label: 'Plano Eléctrico' },
+  { value: 'informe', label: 'Informe' },
+  { value: 'certificado', label: 'Certificado' },
+  { value: 'foto', label: 'Fotografía' },
+  { value: 'pdf', label: 'PDF' },
+  { value: 'doc', label: 'Word (DOC)' },
+  { value: 'docx', label: 'Word (DOCX)' },
+  { value: 'xls', label: 'Excel (XLS)' },
+  { value: 'xlsx', label: 'Excel (XLSX)' },
+  { value: 'jpg', label: 'Imagen JPG' },
+  { value: 'jpeg', label: 'Imagen JPEG' },
+  { value: 'png', label: 'Imagen PNG' }
+]
 
 // Helper functions
 function formatDate(date) {
@@ -418,4 +480,72 @@ const openAddDocumentModal = () => {
   }
   showAddDocumentModal.value = true
 }
-</script> 
+
+function triggerFileInput() {
+  fileInput.value && fileInput.value.click()
+}
+function onFileChange(e) {
+  const file = e.target.files[0]
+  if (file) {
+    newDocument.value.file = file
+  }
+}
+function onFileDrop(e) {
+  isDragging.value = false
+  const file = e.dataTransfer.files[0]
+  if (file) {
+    newDocument.value.file = file
+  }
+}
+function removeFile() {
+  newDocument.value.file = null
+  if (fileInput.value) fileInput.value.value = ''
+}
+
+async function handleUpload() {
+  if (!newDocument.value.file || !newDocument.value.tipo || !newDocument.value.projectId) {
+    error.value = 'Por favor completa todos los campos requeridos';
+    return;
+  }
+  isLoading.value = true;
+  error.value = null;
+  try {
+    await useDocuments().uploadDocument(
+      newDocument.value.projectId,
+      newDocument.value.tipo,
+      newDocument.value.file,
+      newDocument.value.customName || undefined
+    );
+    showAddDocumentModal.value = false;
+    newDocument.value = { project: '' };
+    await loadDocuments();
+  } catch (err) {
+    error.value = 'Error al subir el documento';
+  } finally {
+    isLoading.value = false;
+  }
+}
+</script>
+
+<style scoped>
+.input-modern {
+  @apply border border-zinc-200 dark:border-zinc-700 bg-white/70 dark:bg-zinc-800/80 text-zinc-800 dark:text-white rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition shadow-sm;
+  backdrop-filter: blur(2px);
+}
+.file-drop-area {
+  @apply border-2 border-dashed border-blue-200 dark:border-blue-900 rounded-2xl cursor-pointer transition hover:border-blue-400;
+}
+.modal-fade-enter-active, .modal-fade-leave-active {
+  transition: opacity 0.3s;
+}
+.modal-fade-enter-from, .modal-fade-leave-to {
+  opacity: 0;
+}
+.animate-modal-in {
+  animation: modal-in 0.3s ease-out;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.95);}
+  to { opacity: 1; transform: scale(1);}
+}
+</style> 
