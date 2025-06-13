@@ -454,7 +454,7 @@
                 </div>
                 <div v-else>
                   <ul class="divide-y divide-gray-200">
-                    <li v-for="doc in projectDocumentsModal" :key="doc.id" class="py-3 flex items-center justify-between">
+                    <li v-for="doc in projectDocumentsModal" :key="doc.id" class="py-3 flex items-center">
                       <div class="flex items-center">
                         <span class="material-icons text-gray-400 mr-2">{{ getDocumentIcon(doc.tipo) }}</span>
                         <div class="text-sm max-w-xs truncate">
@@ -470,9 +470,6 @@
                           </span>
                         </div>
                       </div>
-                      <a v-if="doc.url" :href="doc.url" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center">
-                        <span class="material-icons mr-1">download</span>Descargar
-                      </a>
                     </li>
                   </ul>
                 </div>
@@ -1032,6 +1029,25 @@ async function loadProjectDocumentsModal(projectId) {
     .map(doc => ({ id: doc.id, ...doc.data() }))
     .filter(d => d.projectId === projectId)
   isLoadingDocumentsModal.value = false
+}
+
+function getDocumentIcon(tipo) {
+  switch(tipo?.toLowerCase()) {
+    case 'te1':
+    case 'te2':
+    case 'pdf':
+      return 'picture_as_pdf'
+    case 'plano':
+      return 'architecture'
+    case 'informe':
+      return 'description'
+    case 'foto':
+      return 'image'
+    case 'certificado':
+      return 'verified'
+    default:
+      return 'insert_drive_file'
+  }
 }
 </script> 
 
