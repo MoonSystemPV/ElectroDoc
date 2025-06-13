@@ -292,37 +292,21 @@
           </div>
 
           <div class="flex-1 overflow-y-auto">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <!-- Aquí irá el contenido de la carpeta -->
-              <div v-if="selectedFolder === 'Formularios_SEC'" class="space-y-4">
-                <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-4 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
-                  <span class="material-icons text-blue-500">description</span>
-                  <span class="text-zinc-900 dark:text-zinc-100">Formulario SEC-001.pdf</span>
-                </div>
-                <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-4 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
-                  <span class="material-icons text-blue-500">description</span>
-                  <span class="text-zinc-900 dark:text-zinc-100">Formulario SEC-002.pdf</span>
-                </div>
-                <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-4 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
-                  <span class="material-icons text-blue-500">description</span>
-                  <span class="text-zinc-900 dark:text-zinc-100">Formulario SEC-003.pdf</span>
-                </div>
-              </div>
-
-              <div v-if="selectedFolder === 'Planos'" class="space-y-4">
-                <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-4 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
-                  <span class="material-icons text-blue-500">image</span>
-                  <span class="text-zinc-900 dark:text-zinc-100">Plano Eléctrico.dwg</span>
-                </div>
-                <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-4 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
-                  <span class="material-icons text-blue-500">image</span>
-                  <span class="text-zinc-900 dark:text-zinc-100">Plano Estructural.dwg</span>
-                </div>
-                <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-4 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
-                  <span class="material-icons text-blue-500">image</span>
-                  <span class="text-zinc-900 dark:text-zinc-100">Plano Arquitectónico.dwg</span>
-                </div>
-              </div>
+            <div v-if="folderUrls.length === 0" class="text-center py-8">
+              <span class="material-icons text-4xl text-zinc-400 dark:text-zinc-600 mb-2">folder_open</span>
+              <p class="text-zinc-500 dark:text-zinc-400">No hay documentos</p>
+            </div>
+            <div v-else class="flex flex-col gap-4">
+              <DocumentCard
+                v-for="doc in folderUrls"
+                :key="doc.id"
+                :document="doc"
+                :can-validate="isAdmin || isSupervisor"
+                @view="viewDocument"
+                @download="downloadDocument"
+                @validate="validateDocument"
+                @reject="rejectDocument"
+              />
             </div>
           </div>
         </div>
@@ -374,6 +358,8 @@ import { useProjects } from '~/composables/useProjects'
 import { useActivities } from '~/composables/useActivities'
 import ProjectForm from '@/components/ProjectForm.vue'
 import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
+import DocumentCard from '@/components/documents/DocumentCard.vue'
 
 // Aplicar middleware de autenticación
 definePageMeta({
@@ -384,6 +370,7 @@ definePageMeta({
 const { getProjects, createProject, error: projectError } = useProjects()
 const { addActivity } = useActivities()
 const { user } = useAuth()
+const { showToast } = useToast()
 const isSupervisor = computed(() => user.value?.role === 'supervisor')
 const isAdmin = computed(() => user.value?.role === 'admin')
 const canEditProjects = computed(() => isSupervisor.value || isAdmin.value)
@@ -407,6 +394,13 @@ const isCreatingFolder = ref(false)
 const projectFolders = ref([])
 const showNewProjectModal = ref(false)
 const showEditProjectModal = ref(false)
+const folderUrls = ref([])
+const showAddUrlModal = ref(false)
+const isAddingUrl = ref(false)
+const newUrl = ref({
+  name: '',
+  url: ''
+})
 
 // Datos para nuevo proyecto
 const newProject = ref({
@@ -432,6 +426,17 @@ const editProjectData = ref({
   fechaFin: '',
   tecnicosAsignados: []
 })
+
+const defaultFolders = [
+  'Formularios_SEC',
+  'Planos',
+  'Informes_Técnicos',
+  'Evidencia_Fotográfica',
+  'Certificados_Materiales',
+  'Checklists',
+  'Actas',
+  'Otros'
+]
 
 onMounted(() => {
   isLoading.value = true
@@ -610,10 +615,81 @@ async function handleProjectUpdate(projectData) {
   }
 }
 
-function openFolder(folderName) {
+async function openFolder(folderName) {
   selectedFolder.value = folderName
   showFoldersModal.value = false
   showFolderContentModal.value = true
+  
+  try {
+    // Obtenemos el documento de la carpeta
+    const foldersRef = collection(db, `projects/${selectedProject.value.id}/folders`)
+    const foldersSnapshot = await getDocs(foldersRef)
+    const folderDoc = foldersSnapshot.docs.find(doc => doc.data().nombre === folderName)
+    
+    if (!folderDoc) {
+      console.error('Carpeta no encontrada')
+      folderUrls.value = []
+      return
+    }
+
+    // Obtenemos los URLs del campo url de la carpeta (puede ser array de strings, array de objetos, o string)
+    const folderData = folderDoc.data()
+    if (Array.isArray(folderData.url)) {
+      folderUrls.value = folderData.url
+        .filter(item => {
+          if (typeof item === 'string') return item.trim() !== ''
+          if (typeof item === 'object' && item.url) return item.url.trim() !== ''
+          return false
+        })
+        .map(item => {
+          if (typeof item === 'string') {
+            return {
+              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+              nombre: item,
+              url: item,
+              estado: 'pendiente',
+              tipo: 'documento',
+              fechaSubida: new Date(),
+              comentarios: '',
+              projectId: selectedProject.value.id,
+              folderId: folderDoc.id
+            }
+          } else {
+            return {
+              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+              nombre: item.nombre || item.nombreDocumento || item.url,
+              url: item.url,
+              estado: item.estado || 'pendiente',
+              tipo: item.tipo || 'documento',
+              fechaSubida: item.fechaSubida
+                ? (item.fechaSubida.toDate ? item.fechaSubida.toDate() : new Date(item.fechaSubida))
+                : new Date(),
+              comentarios: item.comentarios || '',
+              projectId: item.projectId || selectedProject.value.id,
+              folderId: item.folderId || folderDoc.id
+            }
+          }
+        })
+    } else if (typeof folderData.url === 'string' && folderData.url.length > 0) {
+      folderUrls.value = [{
+        id: folderDoc.id,
+        nombre: folderData.url,
+        url: folderData.url,
+        estado: 'pendiente',
+        tipo: 'documento',
+        fechaSubida: new Date(),
+        comentarios: '',
+        projectId: selectedProject.value.id,
+        folderId: folderDoc.id
+      }]
+    } else {
+      folderUrls.value = []
+    }
+  } catch (err) {
+    console.error('Error al cargar URLs de la carpeta:', err)
+    error.value = 'Error al cargar los URLs de la carpeta'
+    folderUrls.value = []
+  }
 }
 
 // Mostrar opciones de estado
@@ -675,57 +751,6 @@ async function loadProjectFolders() {
   }
 }
 
-// Crear nueva carpeta
-async function createNewFolder() {
-  if (!selectedProject.value || !newFolderName.value) return
-  
-  isCreatingFolder.value = true
-  try {
-    const foldersRef = collection(db, `projects/${selectedProject.value.id}/folders`)
-    await addDoc(foldersRef, {
-      nombre: newFolderName.value,
-      fechaCreacion: serverTimestamp()
-    })
-    
-    await loadProjectFolders()
-    showNewFolderModal.value = false
-    newFolderName.value = ''
-  } catch (err) {
-    console.error('Error al crear carpeta:', err)
-    error.value = 'Error al crear la carpeta'
-  } finally {
-    isCreatingFolder.value = false
-  }
-}
-
-// Eliminar carpeta
-async function deleteFolder(folder) {
-  if (!selectedProject.value || !folder.id) return
-  
-  if (!confirm(`¿Estás seguro de que deseas eliminar la carpeta "${folder.nombre}"?`)) return
-  
-  try {
-    const folderRef = doc(db, `projects/${selectedProject.value.id}/folders`, folder.id)
-    await deleteDoc(folderRef)
-    
-    await loadProjectFolders()
-  } catch (err) {
-    console.error('Error al eliminar carpeta:', err)
-    error.value = 'Error al eliminar la carpeta'
-  }
-}
-
-const defaultFolders = [
-  'Formularios_SEC',
-  'Planos',
-  'Informes_Técnicos',
-  'Evidencia_Fotográfica',
-  'Certificados_Materiales',
-  'Checklists',
-  'Actas',
-  'Otros'
-]
-
 // Crear carpetas por defecto para un proyecto
 async function createDefaultFolders(projectId) {
   try {
@@ -735,7 +760,8 @@ async function createDefaultFolders(projectId) {
     const createFolderPromises = defaultFolders.map(folderName => 
       addDoc(foldersRef, {
         nombre: folderName,
-        fechaCreacion: serverTimestamp()
+        fechaCreacion: serverTimestamp(),
+        url: [] // Campo url como array vacío
       })
     )
     
@@ -873,6 +899,122 @@ const statusOptions = [
     inactiveClass: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-900/20',
   },
 ]
+
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text)
+  showToast('URL copiada al portapapeles', 'success')
+}
+
+function openUrl(url) {
+  window.open(url, '_blank')
+}
+
+async function addUrlToFolder() {
+  if (!selectedProject.value || !selectedFolder.value) return
+  
+  isAddingUrl.value = true
+  try {
+    // Primero obtenemos el ID de la carpeta
+    const foldersRef = collection(db, `projects/${selectedProject.value.id}/folders`)
+    const foldersSnapshot = await getDocs(foldersRef)
+    const folderDoc = foldersSnapshot.docs.find(doc => doc.data().nombre === selectedFolder.value)
+    
+    if (!folderDoc) {
+      throw new Error('Carpeta no encontrada')
+    }
+
+    // Actualizamos el documento de la carpeta con el nuevo objeto url+nombreDocumento en el array
+    const folderRef = doc(db, `projects/${selectedProject.value.id}/folders`, folderDoc.id)
+    const folderData = folderDoc.data()
+    const currentUrls = folderData.url || []
+    
+    await updateDoc(folderRef, {
+      url: [
+        ...currentUrls,
+        {
+          url: newUrl.value.url,
+          nombreDocumento: newUrl.value.name // Aquí se guarda el nombre original
+        }
+      ]
+    })
+    
+    // Recargamos los URLs
+    await openFolder(selectedFolder.value)
+    
+    // Limpiamos el formulario y cerramos el modal
+    newUrl.value = { name: '', url: '' }
+    showAddUrlModal.value = false
+    
+    showToast('URL agregado correctamente', 'success')
+  } catch (err) {
+    console.error('Error al agregar URL:', err)
+    error.value = 'Error al agregar el URL'
+    showToast('Error al agregar el URL', 'error')
+  } finally {
+    isAddingUrl.value = false
+  }
+}
+
+async function createNewFolder() {
+  if (!selectedProject.value || !newFolderName.value) return
+  
+  isCreatingFolder.value = true
+  try {
+    const foldersRef = collection(db, `projects/${selectedProject.value.id}/folders`)
+    await addDoc(foldersRef, {
+      nombre: newFolderName.value,
+      fechaCreacion: serverTimestamp(),
+      url: [] // Campo url como array vacío
+    })
+    
+    await loadProjectFolders()
+    showNewFolderModal.value = false
+    newFolderName.value = ''
+  } catch (err) {
+    console.error('Error al crear carpeta:', err)
+    error.value = 'Error al crear la carpeta'
+  } finally {
+    isCreatingFolder.value = false
+  }
+}
+
+function viewDocument(doc) {
+  if (doc.url && typeof doc.url === 'string' && doc.url.startsWith('http')) {
+    window.open(doc.url, '_blank');
+  } else {
+    showToast('El documento no tiene un enlace válido para visualizar.', 'error');
+  }
+}
+
+function downloadDocument(doc) {
+  const link = document.createElement('a')
+  link.href = doc.url
+  link.download = doc.nombre
+  link.target = '_blank'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+async function validateDocument(doc) {
+  try {
+    await validateDoc(doc.id)
+    showToast('Documento validado correctamente', 'success')
+  } catch (error) {
+    console.error('Error al validar documento:', error)
+    showToast('Error al validar el documento', 'error')
+  }
+}
+
+async function rejectDocument(doc) {
+  try {
+    await rejectDoc(doc.id)
+    showToast('Documento rechazado correctamente', 'success')
+  } catch (error) {
+    console.error('Error al rechazar documento:', error)
+    showToast('Error al rechazar el documento', 'error')
+  }
+}
 </script> 
 
 <style scoped>
