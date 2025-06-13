@@ -27,16 +27,12 @@ export default defineEventHandler(async (event: H3Event) => {
     formData.append('timestamp', timestamp.toString())
     formData.append('signature', signature)
 
-    // Detectar tipo de recurso (image, raw, video)
-    let resourceType = resource_type
-    if (!resourceType) {
-        // Heurística: si termina en .pdf, .zip, .docx, etc. => raw
-        if (/\.(pdf|zip|docx?|xlsx?|pptx?|txt)$/i.test(public_id)) {
-            resourceType = 'raw'
-        } else {
-            resourceType = 'image'
-        }
-    }
+
+    // Detectar tipo de recurso (image o raw)
+    // Si el public_id tiene extensión de imagen usa image, si no usa raw
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+    const isImage = imageExtensions.some(ext => public_id.toLowerCase().endsWith(ext));
+    const resourceType = isImage ? 'image' : 'raw';
 
     // LOGS DE DEPURACIÓN
     console.log('Intentando eliminar en Cloudinary:', {
@@ -46,6 +42,12 @@ export default defineEventHandler(async (event: H3Event) => {
         timestamp,
         signature,
         resourceType
+    })
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/destroy`, {
+        method: 'POST',
+        body: formData
+
     })
 
     try {

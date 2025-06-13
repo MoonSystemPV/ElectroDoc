@@ -39,6 +39,36 @@ export function useDocuments() {
   const documents = computed(() => documentStore.documents)
 
   /**
+   * Normaliza texto para comparación flexible (sin tildes, minúsculas, guiones, etc.)
+   * (No elimina la 's' al final de cada palabra)
+   */
+  function normalizeText(text: string) {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // quitar tildes
+      .replace(/[_\-]/g, ' ')           // guion bajo y guion a espacio
+      .replace(/[^a-z0-9 ]/g, '')        // quitar otros caracteres especiales
+      .replace(/\s+/g, ' ')             // espacios múltiples a uno solo
+      .trim();
+  }
+
+  /**
+   * Normaliza texto y elimina la 's' al final de cada palabra (para folders)
+   */
+  function normalizeTextSingular(text: string) {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // quitar tildes
+      .replace(/[_\-]/g, ' ')           // guion bajo y guion a espacio
+      .replace(/[^a-z0-9 ]/g, '')        // quitar otros caracteres especiales
+      .replace(/\s+/g, ' ')             // espacios múltiples a uno solo
+      .replace(/\b([a-z0-9]+)s\b/g, '$1') // eliminar 's' al final de cada palabra
+      .trim();
+  }
+
+  /**
    * Get all documents for a project
    */
   const getProjectDocuments = async (projectId: string) => {
@@ -303,46 +333,135 @@ export function useDocuments() {
   }
 
   /**
+   * Busca coincidencias de nombres de proyectos ignorando mayúsculas, minúsculas y tildes
+   */
+  const findMatchingProject = async (fileName: string) => {
+    const db = getFirestore();
+    const projectsRef = collection(db, 'projects');
+    const projectsSnapshot = await getDocs(projectsRef);
+
+    const normalizedFileName = normalizeText(fileName);
+
+    for (const doc of projectsSnapshot.docs) {
+      const projectData = doc.data();
+      const normalizedProjectName = normalizeText(projectData.nombre);
+
+      if (normalizedFileName.includes(normalizedProjectName) ||
+        normalizedProjectName.includes(normalizedFileName)) {
+        return { id: doc.id, nombre: projectData.nombre };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Busca coincidencia de folder en la subcolección 'folders' de un proyecto
+   * Retorna { folder: {id, nombre}, folders: [{id, nombre}] }
+   */
+  const findMatchingFolder = async (projectId: string, fileName: string) => {
+    const db = getFirestore();
+    const foldersRef = collection(db, 'projects', projectId, 'folders');
+    const foldersSnapshot = await getDocs(foldersRef);
+    const normalizedFileName = normalizeTextSingular(fileName);
+    let matchingFolder = null;
+    const folders = [];
+    for (const doc of foldersSnapshot.docs) {
+      const folderData = doc.data();
+      folders.push({ id: doc.id, nombre: folderData.nombre });
+      const normalizedFolderName = normalizeTextSingular(folderData.nombre);
+      if (
+        normalizedFileName.includes(normalizedFolderName) ||
+        normalizedFolderName.includes(normalizedFileName)
+      ) {
+        matchingFolder = { id: doc.id, nombre: folderData.nombre };
+      }
+    }
+    return { folder: matchingFolder, folders };
+  };
+
+  /**
+   * Guarda la URL en el folder indicado (por id) en la subcolección 'folders' del proyecto
+   */
+  const addUrlToFolder = async (projectId: string, folderId: string, documentObj: any) => {
+    const db = getFirestore();
+    const folderRef = firestoreDoc(db, 'projects', projectId, 'folders', folderId);
+    const folderSnap = await getDoc(folderRef);
+    if (folderSnap.exists()) {
+      const folderData = folderSnap.data();
+      const urls = Array.isArray(folderData.url) ? folderData.url : [];
+      urls.push(documentObj);
+      await updateDoc(folderRef, { url: urls });
+    }
+  };
+
+  /**
    * Sube un documento a un proyecto (ahora usando Cloudinary)
    */
   const uploadDocument = async (
     projectId: string,
     tipo: DocumentType,
     file: File,
-    customName?: string
+    customName?: string,
+    selectedFolderId?: string // Nuevo parámetro opcional
   ) => {
     isLoading.value = true;
     error.value = null;
 
     try {
-      // 1. Subir el archivo a Cloudinary
+      // 1. Buscar coincidencia de proyecto basada en el nombre del archivo
+      const matchingProject = await findMatchingProject(file.name);
+      if (matchingProject) {
+        projectId = matchingProject.id;
+      }
+
+      // 2. Buscar coincidencia de folder
+      let folderId = selectedFolderId;
+      let foldersList = [];
+      if (!folderId) {
+        const { folder, folders } = await findMatchingFolder(projectId, file.name);
+        foldersList = folders;
+        if (folder) {
+          folderId = folder.id;
+        }
+      }
+
+      // 3. Si no hay folderId, retornar la lista de folders para el frontend (NO subir aún)
+      if (!folderId) {
+        return { needFolderSelection: true, folders: foldersList, file };
+      }
+
+      // 4. Subir el archivo a Cloudinary
       const cloudinaryResult = await uploadToCloudinary(file);
-      // 2. Usar la URL devuelta por Cloudinary
       const fileUrl = cloudinaryResult.secure_url;
 
-      // 3. Crear el nuevo documento
+      // 5. Crear el objeto completo del documento
       const newDocument = {
         projectId: projectId,
         tipo: tipo as DocumentType,
-        nombre: cloudinaryResult.original_filename,
+        nombre: customName || cloudinaryResult.original_filename,
         url: fileUrl,
         estado: 'pendiente',
         version: 1,
         uploadedBy: authStore.user?.id || 'user-demo',
         fechaSubida: new Date(cloudinaryResult.created_at),
         storagePath: cloudinaryResult.public_id,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(), // Solo para la colección global
+        folderId: folderId || null,
+        comentarios: ''
       };
 
-      // 4. Guardar en Firestore
+      // 6. Guardar el objeto en el array url del folder (sin serverTimestamp)
+      const folderDocument = { ...newDocument, createdAt: new Date() };
+      await addUrlToFolder(projectId, folderId, folderDocument);
+
+      // 7. Guardar el documento en la colección documents (con serverTimestamp)
       await addDoc(collection(db, 'documents'), newDocument);
-      // 5. Recargar documentos desde Firestore
-      await fetchDocumentsFromFirestore();
+
       return newDocument;
     } catch (err) {
-      console.error('Error uploading document:', err);
       error.value = 'Error al subir el documento';
-      return null;
+      throw err;
     } finally {
       isLoading.value = false;
     }
@@ -537,8 +656,10 @@ export function useDocuments() {
       }
 
       const documentData = docSnap.data();
-      // Extraer el public_id de Cloudinary
-      const publicId = documentData.storagePath || (documentData.url.split('/').slice(-1)[0].split('.')[0]);
+      const publicId = documentData.storagePath;
+      if (!publicId) {
+        throw new Error('No se encontró el public_id (storagePath) para eliminar en Cloudinary');
+      }
 
       // Llamar al endpoint backend para eliminar de Cloudinary
       const response = await fetch('/api/delete-cloudinary', {
@@ -547,13 +668,30 @@ export function useDocuments() {
         body: JSON.stringify({ public_id: publicId })
       });
       const result = await response.json();
-      if (!result.result || result.result !== 'ok') {
-        throw new Error('Error al eliminar de Cloudinary');
+      console.log('[DEBUG] Respuesta de Cloudinary:', result);
+
+      if (result.result !== 'ok' && result.result !== 'not found') {
+        throw new Error('Error al eliminar de Cloudinary: ' + (result.result || JSON.stringify(result)));
+      }
+
+      // Eliminar del array url del folder correspondiente
+      if (documentData.projectId && documentData.folderId) {
+        const folderRef = firestoreDoc(db, 'projects', documentData.projectId, 'folders', documentData.folderId);
+        const folderSnap = await getDoc(folderRef);
+        if (folderSnap.exists()) {
+          const folderData = folderSnap.data();
+          const urls = Array.isArray(folderData.url) ? folderData.url : [];
+          // Filtrar el documento a eliminar por url y nombreDocumento
+          const newUrls = urls.filter((item: any) => {
+            if (typeof item === 'string') return item !== documentData.url;
+            return item.url !== documentData.url;
+          });
+          await updateDoc(folderRef, { url: newUrls });
+        }
       }
 
       // Eliminar de Firestore
       await deleteDoc(docRef);
-      // Actualizar el store
       documentStore.removeDocument(documentId);
       return true;
     } catch (error) {
@@ -574,6 +712,9 @@ export function useDocuments() {
     rejectDocument,
     getDocumentsByUser,
     fetchDocumentsFromFirestore,
-    deleteDocument
+    deleteDocument,
+    findMatchingProject,
+    findMatchingFolder,
+    addUrlToFolder
   }
 } 

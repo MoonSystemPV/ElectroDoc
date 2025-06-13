@@ -4,7 +4,12 @@
       {{ uploadError }}
     </div>
     
-    <form @submit.prevent="uploadFile" class="space-y-4">
+    <div v-if="matchingProject" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+      Se encontró una coincidencia con el proyecto: <b>{{ matchingProject.nombre }}</b>
+      <template v-if="matchingFolder"> y la carpeta: <b>{{ matchingFolder.nombre }}</b></template>
+    </div>
+    
+    <form v-if="!needFolderSelection" @submit.prevent="uploadFile" class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Documento</label>
         <select
@@ -101,12 +106,22 @@
         </button>
       </div>
     </form>
+    <div v-else class="mt-4">
+      <div class="mb-2">No se encontró coincidencia de carpeta. Selecciona una carpeta para guardar el archivo:</div>
+      <select v-model="selectedFolderId" class="w-full border rounded p-2 mb-4">
+        <option value="" disabled>Selecciona una carpeta</option>
+        <option v-for="folder in foldersList" :key="folder.id" :value="folder.id">{{ folder.nombre }}</option>
+      </select>
+      <button @click="confirmFolderSelection" class="btn btn-primary">Confirmar carpeta</button>
+      <button @click="$emit('cancel')" class="btn btn-secondary ml-2">Cancelar</button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useDocuments, type DocumentType } from '~/composables/useDocuments'
+import { useProjects } from '~/composables/useProjects'
 
 const props = defineProps({
   projectId: {
@@ -119,6 +134,7 @@ const emit = defineEmits(['upload-success', 'cancel'])
 
 // Composables
 const { uploadDocument, error: documentError, isLoading: isUploading } = useDocuments()
+const { getProjectById } = useProjects()
 
 // State
 const uploadData = ref({
@@ -128,6 +144,12 @@ const uploadData = ref({
 })
 const dragover = ref(false)
 const uploadError = ref('')
+const matchingProject = ref<any>(null)
+const matchingFolder = ref<any>(null)
+const needFolderSelection = ref(false)
+const foldersList = ref<any[]>([])
+const selectedFolderId = ref('')
+const fileUrlPending = ref<File | null>(null)
 
 // DOM refs
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -139,17 +161,37 @@ const triggerFileInput = () => {
   }
 }
 
-const onFileChange = (event: Event) => {
+const onFileChange = async (event: Event) => {
   const input = event.target as HTMLInputElement
   if (input.files && input.files.length > 0) {
     uploadData.value.file = input.files[0]
+    // Buscar coincidencia de proyecto
+    const { findMatchingProject, findMatchingFolder } = useDocuments()
+    matchingProject.value = await findMatchingProject(input.files[0].name)
+    matchingFolder.value = null
+    if (matchingProject.value) {
+      const folderResult = await findMatchingFolder(matchingProject.value.id, input.files[0].name)
+      if (folderResult.folder) {
+        matchingFolder.value = folderResult.folder
+      }
+    }
   }
 }
 
-const onFileDrop = (event: DragEvent) => {
+const onFileDrop = async (event: DragEvent) => {
   dragover.value = false
   if (event.dataTransfer?.files.length) {
     uploadData.value.file = event.dataTransfer.files[0]
+    // Buscar coincidencia de proyecto
+    const { findMatchingProject, findMatchingFolder } = useDocuments()
+    matchingProject.value = await findMatchingProject(event.dataTransfer.files[0].name)
+    matchingFolder.value = null
+    if (matchingProject.value) {
+      const folderResult = await findMatchingFolder(matchingProject.value.id, event.dataTransfer.files[0].name)
+      if (folderResult.folder) {
+        matchingFolder.value = folderResult.folder
+      }
+    }
   }
 }
 
@@ -168,31 +210,67 @@ const uploadFile = async () => {
   }
 
   uploadError.value = ''
+  needFolderSelection.value = false
+  foldersList.value = []
+  selectedFolderId.value = ''
+  fileUrlPending.value = null
 
   try {
-    const document = await uploadDocument(
+    // Si hay coincidencia de folder, pasar el folderId para guardar automáticamente
+    const result = await uploadDocument(
       props.projectId,
       uploadData.value.tipo,
       uploadData.value.file,
-      uploadData.value.customName || undefined
+      uploadData.value.customName || undefined,
+      matchingFolder.value ? matchingFolder.value.id : undefined
     )
-
-    if (document) {
+    if (result && typeof result === 'object' && 'needFolderSelection' in result && result.needFolderSelection) {
+      // No hubo coincidencia de folder, mostrar select
+      needFolderSelection.value = true
+      foldersList.value = result.folders
+      fileUrlPending.value = result.file
+      return
+    }
+    if (result) {
       // Reset form
       uploadData.value = {
         tipo: '' as DocumentType,
         customName: '',
         file: null
       }
-      
-      // Emit success event
-      emit('upload-success', document)
+      emit('upload-success', result)
     } else {
       uploadError.value = documentError.value || 'Error al subir el documento'
     }
   } catch (err) {
     console.error('Error uploading document:', err)
     uploadError.value = 'Error al subir el documento'
+  }
+}
+
+const confirmFolderSelection = async () => {
+  if (!selectedFolderId.value || !fileUrlPending.value) {
+    uploadError.value = 'Selecciona una carpeta para guardar el archivo.'
+    return
+  }
+  try {
+    // Subir el documento usando el folder seleccionado y el archivo original
+    const result = await uploadDocument(
+      props.projectId,
+      uploadData.value.tipo,
+      fileUrlPending.value, // fileUrlPending ahora es el archivo original (tipo File)
+      uploadData.value.customName || undefined,
+      selectedFolderId.value
+    )
+    // Reset estados
+    needFolderSelection.value = false
+    foldersList.value = []
+    selectedFolderId.value = ''
+    fileUrlPending.value = null
+    // Emitir éxito
+    emit('upload-success', result)
+  } catch (err) {
+    uploadError.value = 'Error al guardar el archivo en la carpeta seleccionada.'
   }
 }
 </script>
