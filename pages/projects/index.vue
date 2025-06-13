@@ -438,7 +438,9 @@
                 </div>
                 <div v-else>
                   <ul class="divide-y divide-gray-200">
-                    <li v-for="doc in projectDocumentsModal" :key="doc.id" class="py-3 flex items-center">
+
+                    <li v-for="doc in projectDocumentsModal" :key="doc.id" class="py-3 flex items-center justify-between">
+
                       <div class="flex items-center">
                         <span class="material-icons text-gray-400 mr-2">{{ getDocumentIcon(doc.tipo) }}</span>
                         <div class="text-sm max-w-xs truncate">
@@ -454,6 +456,11 @@
                           </span>
                         </div>
                       </div>
+
+                      <a v-if="doc.url" :href="doc.url" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium text-sm flex items-center">
+                        <span class="material-icons mr-1">download</span>Descargar
+                      </a>
+
                     </li>
                   </ul>
                 </div>
@@ -1017,122 +1024,6 @@ const statusOptions = [
     inactiveClass: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-900/20',
   },
 ]
-
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text)
-  showToast('URL copiada al portapapeles', 'success')
-}
-
-function openUrl(url) {
-  window.open(url, '_blank')
-}
-
-async function addUrlToFolder() {
-  if (!selectedProject.value || !selectedFolder.value) return
-  
-  isAddingUrl.value = true
-  try {
-    // Primero obtenemos el ID de la carpeta
-    const foldersRef = collection(db, `projects/${selectedProject.value.id}/folders`)
-    const foldersSnapshot = await getDocs(foldersRef)
-    const folderDoc = foldersSnapshot.docs.find(doc => doc.data().nombre === selectedFolder.value)
-    
-    if (!folderDoc) {
-      throw new Error('Carpeta no encontrada')
-    }
-
-    // Actualizamos el documento de la carpeta con el nuevo objeto url+nombreDocumento en el array
-    const folderRef = doc(db, `projects/${selectedProject.value.id}/folders`, folderDoc.id)
-    const folderData = folderDoc.data()
-    const currentUrls = folderData.url || []
-    
-    await updateDoc(folderRef, {
-      url: [
-        ...currentUrls,
-        {
-          url: newUrl.value.url,
-          nombreDocumento: newUrl.value.name // Aquí se guarda el nombre original
-        }
-      ]
-    })
-    
-    // Recargamos los URLs
-    await openFolder(selectedFolder.value)
-    
-    // Limpiamos el formulario y cerramos el modal
-    newUrl.value = { name: '', url: '' }
-    showAddUrlModal.value = false
-    
-    showToast('URL agregado correctamente', 'success')
-  } catch (err) {
-    console.error('Error al agregar URL:', err)
-    error.value = 'Error al agregar el URL'
-    showToast('Error al agregar el URL', 'error')
-  } finally {
-    isAddingUrl.value = false
-  }
-}
-
-async function createNewFolder() {
-  if (!selectedProject.value || !newFolderName.value) return
-  
-  isCreatingFolder.value = true
-  try {
-    const foldersRef = collection(db, `projects/${selectedProject.value.id}/folders`)
-    await addDoc(foldersRef, {
-      nombre: newFolderName.value,
-      fechaCreacion: serverTimestamp(),
-      url: [] // Campo url como array vacío
-    })
-    
-    await loadProjectFolders()
-    showNewFolderModal.value = false
-    newFolderName.value = ''
-  } catch (err) {
-    console.error('Error al crear carpeta:', err)
-    error.value = 'Error al crear la carpeta'
-  } finally {
-    isCreatingFolder.value = false
-  }
-}
-
-function viewDocument(doc) {
-  if (doc.url && typeof doc.url === 'string' && doc.url.startsWith('http')) {
-    window.open(doc.url, '_blank');
-  } else {
-    showToast('El documento no tiene un enlace válido para visualizar.', 'error');
-  }
-}
-
-function downloadDocument(doc) {
-  const link = document.createElement('a')
-  link.href = doc.url
-  link.download = doc.nombre
-  link.target = '_blank'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
-
-async function validateDocument(doc) {
-  try {
-    await validateDoc(doc.id)
-    showToast('Documento validado correctamente', 'success')
-  } catch (error) {
-    console.error('Error al validar documento:', error)
-    showToast('Error al validar el documento', 'error')
-  }
-}
-
-async function rejectDocument(doc) {
-  try {
-    await rejectDoc(doc.id)
-    showToast('Documento rechazado correctamente', 'success')
-  } catch (error) {
-    console.error('Error al rechazar documento:', error)
-    showToast('Error al rechazar el documento', 'error')
-  }
-}
 </script> 
 
 <style scoped>
