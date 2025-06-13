@@ -65,6 +65,13 @@
         <span class="material-icons text-sm">visibility</span>
       </button>
       <button
+        @click="openEditNameModal"
+        class="text-zinc-600 hover:text-zinc-900 p-1"
+        title="Editar nombre"
+      >
+        <span class="material-icons text-sm">edit</span>
+      </button>
+      <button
         @click="$emit('download', document)"
         class="text-blue-600 hover:text-blue-900 p-1"
         title="Descargar documento"
@@ -146,15 +153,43 @@
       </div>
     </div>
   </div>
+  <div v-if="showEditNameModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+      <h3 class="text-lg font-semibold mb-4">Editar Nombre del Documento</h3>
+      <div class="space-y-4">
+        <input 
+          v-model="newName" 
+          class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Nuevo nombre del documento"
+        />
+      </div>
+      <div class="flex justify-end gap-2 mt-6">
+        <button 
+          @click="showEditNameModal = false"
+          class="px-4 py-2 text-gray-600 hover:text-gray-800"
+        >
+          Cancelar
+        </button>
+        <button 
+          @click="updateDocumentName"
+          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuth } from '~/composables/useAuth'
 import { useDocuments } from '~/composables/useDocuments'
 import { useToast } from '~/composables/useToast'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '@/utils/firebase'
 
 const props = defineProps({
   document: {
@@ -167,7 +202,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['view', 'download', 'validate', 'reject'])
+const emit = defineEmits(['view', 'download', 'validate', 'reject', 'update'])
 
 const { user, isAdmin, isSupervisor } = useAuth()
 const { validateDocument, rejectDocument, deleteDocument: deleteDoc } = useDocuments()
@@ -176,8 +211,10 @@ const { showToast } = useToast()
 // Estado local
 const showStatusModal = ref(false)
 const showDeleteModal = ref(false)
+const showEditNameModal = ref(false)
 const newStatus = ref(props.document.estado)
 const statusComment = ref('')
+const newName = ref(props.document.nombre)
 
 // Computed properties
 const canManageDocument = computed(() => {
@@ -248,11 +285,37 @@ async function deleteDocument() {
     await deleteDoc(props.document.id)
     showDeleteModal.value = false
     showToast('Documento eliminado correctamente', 'success')
+    emit('update')
   } catch (error) {
     console.error('Error al eliminar documento:', error)
     showToast('Error al eliminar el documento', 'error')
   }
 }
+
+async function updateDocumentName() {
+  try {
+    const docRef = doc(db, 'documents', props.document.id)
+    await updateDoc(docRef, { nombre: newName.value })
+    showEditNameModal.value = false
+    showToast('Nombre del documento actualizado correctamente', 'success')
+    // Emitir evento para actualizar la lista
+    emit('update')
+  } catch (error) {
+    console.error('Error al actualizar nombre del documento:', error)
+    showToast('Error al actualizar el nombre del documento', 'error')
+  }
+}
+
+// Abrir modal de edición de nombre
+function openEditNameModal() {
+  newName.value = props.document.nombre
+  showEditNameModal.value = true
+}
+
+// Escuchar el evento editName
+watch(() => emit('editName', props.document), () => {
+  openEditNameModal()
+})
 </script>
 
 <style scoped>

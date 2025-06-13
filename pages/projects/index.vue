@@ -36,7 +36,11 @@
             <div class="p-6">
               <div class="flex items-start justify-between mb-4">
                 <div>
-                  <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{{ project.nombre }}</h3>
+                  <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
+                    <button @click="openProjectModal(project)" class="hover:text-blue-600 underline transition-colors">
+                      {{ project.nombre }}
+                    </button>
+                  </h3>
                   <p class="text-sm text-zinc-500 dark:text-zinc-400">Encargado: {{ project.supervisor }}</p>
                 </div>
                 <div class="flex items-center gap-2">
@@ -345,6 +349,119 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal flotante de detalles de proyecto -->
+      <transition name="modal">
+        <div v-if="showProjectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-4xl w-full p-8 overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold text-blue-600 dark:text-blue-300 flex items-center gap-2">
+                <span class="material-icons">folder</span>
+                {{ selectedProjectModal?.nombre }}
+              </h2>
+              <button @click="closeProjectModal" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <!-- Datos clave del proyecto -->
+              <div class="bg-zinc-50 dark:bg-zinc-800 rounded-lg shadow p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Resumen</h3>
+                <ul class="space-y-2 text-sm">
+                  <li><strong>Cliente:</strong> {{ selectedProjectModal?.cliente }}</li>
+                  <li><strong>Estado:</strong> {{ selectedProjectModal?.estado }}</li>
+                  <li><strong>Fecha de inicio:</strong> {{ formatDate(selectedProjectModal?.fechaInicio) }}</li>
+                  <li><strong>Fecha de fin:</strong> {{ formatDate(selectedProjectModal?.fechaFin) }}</li>
+                  <li><strong>Técnicos asignados:</strong>
+                    <span v-if="selectedProjectModal?.tecnicosAsignados && selectedProjectModal.tecnicosAsignados.length">
+                      <span v-for="uid in selectedProjectModal.tecnicosAsignados" :key="uid" class="user-pill">{{ getUserName(uid) }}</span>
+                    </span>
+                    <span v-else>Ninguno</span>
+                  </li>
+                </ul>
+              </div>
+              <!-- Tareas del proyecto -->
+              <div class="bg-zinc-50 dark:bg-zinc-800 rounded-lg shadow p-6 md:col-span-1">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Tareas</h3>
+                <div v-if="isLoadingTareasModal" class="py-8 text-center text-gray-500">
+                  <div class="animate-spin mx-auto h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                  <p class="mt-2">Cargando tareas...</p>
+                </div>
+                <div v-else-if="projectTareasModal.length === 0" class="text-center py-6 text-gray-500">
+                  <span class="material-icons mb-2">task_alt</span>
+                  <p>No hay tareas asignadas</p>
+                </div>
+                <div v-else class="space-y-4">
+                  <div v-for="tarea in projectTareasModal" :key="tarea.id" class="tarea-card group">
+                    <div class="flex items-center mb-2">
+                      <span class="material-icons text-blue-400 mr-3 text-2xl">task</span>
+                      <h4 class="text-base font-bold text-zinc-900 dark:text-white flex-1 truncate group-hover:text-blue-600 transition-colors">
+                        {{ tarea.nombre }}
+                      </h4>
+                    </div>
+                    <div class="mb-2 text-zinc-600 dark:text-zinc-400 text-sm">
+                      <p class="truncate">{{ tarea.descripcion || 'Sin descripción' }}</p>
+                    </div>
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="badge-modern"
+              :class="{
+                          'badge-pendiente': tarea.estado === 'pendiente',
+                          'badge-completada': tarea.estado === 'completada',
+                          'badge-atrasada': tarea.estado === 'atrasada'
+              }"
+            >
+                        {{ tarea.estado.charAt(0).toUpperCase() + tarea.estado.slice(1) }}
+                      </span>
+          </div>
+                    <div class="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      <span class="font-semibold">Técnicos asignados:</span>
+                      <span v-if="tarea.tecnicosAsignados && tarea.tecnicosAsignados.length">
+                        <span v-for="uid in tarea.tecnicosAsignados" :key="uid" class="inline-block mr-1">
+                          <span class="user-pill">{{ getUserName(uid) }}</span>
+                        </span>
+                      </span>
+                      <span v-else>Ninguno</span>
+        </div>
+      </div>
+                </div>
+              </div>
+              <!-- Archivos/documentos del proyecto -->
+              <div class="bg-zinc-50 dark:bg-zinc-800 rounded-lg shadow p-6 md:col-span-1">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Archivos</h3>
+                <div v-if="isLoadingDocumentsModal" class="py-8 text-center text-gray-500">
+                  <div class="animate-spin mx-auto h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                  <p class="mt-2">Cargando archivos...</p>
+                </div>
+                <div v-else-if="projectDocumentsModal.length === 0" class="text-center py-6 text-gray-500">
+                  <span class="material-icons mb-2">folder_open</span>
+                  <p>No hay archivos subidos</p>
+                </div>
+                <div v-else>
+                  <ul class="divide-y divide-gray-200">
+                    <li v-for="doc in projectDocumentsModal" :key="doc.id" class="py-3 flex items-center">
+                      <div class="flex items-center">
+                        <span class="material-icons text-gray-400 mr-2">{{ getDocumentIcon(doc.tipo) }}</span>
+                        <div class="text-sm max-w-xs truncate">
+                          <p class="font-medium text-gray-900 truncate">{{ doc.nombre }}</p>
+                          <span class="badge-sm"
+                            :class="{
+                              'bg-yellow-100 text-yellow-800': doc.estado === 'pendiente',
+                              'bg-green-100 text-green-800': doc.estado === 'validado',
+                              'bg-red-100 text-red-800': doc.estado === 'rechazado'
+                            }"
+                          >
+                            {{ doc.estado }}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
   </MainLayout>
 </template>
@@ -401,6 +518,7 @@ const newUrl = ref({
   name: '',
   url: ''
 })
+
 
 // Datos para nuevo proyecto
 const newProject = ref({

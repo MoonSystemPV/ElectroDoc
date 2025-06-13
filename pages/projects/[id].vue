@@ -387,8 +387,9 @@ const loadDocuments = async () => {
   isLoadingDocuments.value = true
   
   try {
-    const docs = getDocumentsByProject.value
-    documents.value = docs
+    // Obtener todos los documentos y filtrar por projectId o proyectoId
+    const allDocs = getDocumentsByProject.value
+    documents.value = allDocs.filter(doc => doc.projectId === id.value || doc.proyectoId === id.value)
   } catch (err) {
     console.error('Error loading documents:', err)
   } finally {
