@@ -188,7 +188,7 @@ import { es } from 'date-fns/locale'
 import { useAuth } from '~/composables/useAuth'
 import { useDocuments } from '~/composables/useDocuments'
 import { useToast } from '~/composables/useToast'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc, collection, getDocs } from 'firebase/firestore'
 import { db } from '@/utils/firebase'
 
 const props = defineProps({
@@ -202,10 +202,10 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['view', 'download', 'validate', 'reject'])
+const emit = defineEmits(['view', 'download', 'validate', 'reject', 'update', 'editName'])
 
 const { user, isAdmin, isSupervisor } = useAuth()
-const { validateDocument, rejectDocument, deleteDocument: deleteDoc } = useDocuments()
+const { validateDocument, rejectDocument, deleteDocument: deleteDocumentGlobal, deleteDocumentByNameOrUrl } = useDocuments()
 const { showToast } = useToast()
 
 // Estado local
@@ -223,7 +223,8 @@ const canManageDocument = computed(() => {
 
 // Helper functions
 const formatDate = (date: Date) => {
-  return format(date, 'dd MMM yyyy', { locale: es })
+  if (!date || isNaN(new Date(date).getTime())) return 'Sin fecha';
+  return format(new Date(date), 'dd MMM yyyy', { locale: es });
 }
 
 const getDocumentTypeName = (type: string) => {
@@ -282,12 +283,25 @@ function confirmDelete() {
 
 async function deleteDocument() {
   try {
-    await deleteDoc(props.document.id)
-    showDeleteModal.value = false
-    showToast('Documento eliminado correctamente', 'success')
+    showToast('Eliminando documento...', 'info');
+    // Buscar en la colección global por url
+    const documentsRef = collection(db, 'documents');
+    const documentsSnapshot = await getDocs(documentsRef);
+    const foundDoc = documentsSnapshot.docs.find(docSnap =>
+      docSnap.data().url === props.document.url
+    );
+    if (foundDoc) {
+      await deleteDocumentGlobal(foundDoc.id); // Elimina de todos lados por ID real
+    } else {
+      await deleteDocumentByNameOrUrl(props.document.nombre, props.document.url); // Fallback por nombre/url
+    }
+    showDeleteModal.value = false;
+    showToast('Documento eliminado correctamente', 'success');
+    emit('update');
   } catch (error) {
-    console.error('Error al eliminar documento:', error)
-    showToast('Error al eliminar el documento', 'error')
+    showDeleteModal.value = false;
+    showToast('Error al eliminar el documento', 'error');
+    emit('update');
   }
 }
 
