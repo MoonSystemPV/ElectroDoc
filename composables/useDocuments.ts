@@ -387,11 +387,26 @@ export function useDocuments() {
     const db = getFirestore();
     const folderRef = firestoreDoc(db, 'projects', projectId, 'folders', folderId);
     const folderSnap = await getDoc(folderRef);
+
     if (folderSnap.exists()) {
       const folderData = folderSnap.data();
+      // Asegurarnos de que url es un array
       const urls = Array.isArray(folderData.url) ? folderData.url : [];
-      urls.push(documentObj);
+
+      // Asegurarnos de que el documento tenga un id para poder identificarlo después
+      const docToAdd = {
+        ...documentObj,
+        id: documentObj.id || `doc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      };
+
+      console.log(`Añadiendo documento a carpeta ${projectId}/${folderId}:`, docToAdd);
+      urls.push(docToAdd);
+
       await updateDoc(folderRef, { url: urls });
+      console.log(`Documento añadido a la carpeta. Total documentos: ${urls.length}`);
+    } else {
+      console.error(`Carpeta ${projectId}/${folderId} no encontrada`);
+      throw new Error(`Carpeta no encontrada: ${projectId}/${folderId}`);
     }
   };
 
@@ -403,42 +418,49 @@ export function useDocuments() {
     tipo: DocumentType,
     file: File,
     customName?: string,
-    selectedFolderId?: string // Nuevo parámetro opcional
+    selectedFolderId?: string // Parámetro opcional para la carpeta seleccionada
   ) => {
     isLoading.value = true;
     error.value = null;
 
     try {
-      // 1. Buscar coincidencia de proyecto basada en el nombre del archivo
-      const matchingProject = await findMatchingProject(file.name);
-      if (matchingProject) {
-        projectId = matchingProject.id;
-      }
-
-      // 2. Buscar coincidencia de folder
-      let folderId = selectedFolderId;
-      let foldersList = [];
-      if (!folderId) {
-        const { folder, folders } = await findMatchingFolder(projectId, file.name);
-        foldersList = folders;
-        if (folder) {
-          folderId = folder.id;
-        }
-      }
-
-      // 3. Si no hay folderId, retornar la lista de folders para el frontend (NO subir aún)
-      if (!folderId) {
-        return { needFolderSelection: true, folders: foldersList, file };
-      }
-
-      // 4. Subir el archivo a Cloudinary
+      // 1. Subir el archivo a Cloudinary
       const cloudinaryResult = await uploadToCloudinary(file);
       const fileUrl = cloudinaryResult.secure_url;
 
-      // 5. Crear el objeto completo del documento
+      // 2. Crear el objeto completo del documento
       const newDocument = {
         projectId: projectId,
-        tipo: tipo as DocumentType,
+        proyectoId: projectId, // Campo requerido por la interfaz Document
+        tipo: tipo,
+        nombre: customName || cloudinaryResult.original_filename,
+        url: fileUrl,
+        estado: 'pendiente' as DocumentStatus,
+        version: 1,
+        uploadedBy: authStore.user?.id || 'user-demo',
+        fechaSubida: new Date(cloudinaryResult.created_at),
+        storagePath: cloudinaryResult.public_id,
+        createdAt: serverTimestamp(), // Solo para la colección global
+        folderId: selectedFolderId || null,
+        comentarios: ''
+      };
+
+      // 3. Guardar el objeto en el array url del folder (sin serverTimestamp)
+      const folderDocument = { ...newDocument, createdAt: new Date() };
+
+      if (selectedFolderId) {
+        await addUrlToFolder(projectId, selectedFolderId, folderDocument);
+      }
+
+      // 4. Guardar el documento en la colección global
+      const docRef = await addDoc(collection(db, 'documents'), newDocument);
+
+      // 5. Crear el documento para el store siguiendo la interfaz Document
+      const documentForStore: Document = {
+        id: docRef.id,
+        projectId: projectId,
+        proyectoId: projectId,
+        tipo: tipo,
         nombre: customName || cloudinaryResult.original_filename,
         url: fileUrl,
         estado: 'pendiente',
@@ -446,26 +468,21 @@ export function useDocuments() {
         uploadedBy: authStore.user?.id || 'user-demo',
         fechaSubida: new Date(cloudinaryResult.created_at),
         storagePath: cloudinaryResult.public_id,
-        createdAt: serverTimestamp(), // Solo para la colección global
-        folderId: folderId || null,
         comentarios: ''
       };
 
-      // 6. Guardar el objeto en el array url del folder (sin serverTimestamp)
-      const folderDocument = { ...newDocument, createdAt: new Date() };
-      await addUrlToFolder(projectId, folderId, folderDocument);
+      // Actualizar el store
+      documentStore.addDocument(documentForStore);
 
-      // 7. Guardar el documento en la colección documents (con serverTimestamp)
-      await addDoc(collection(db, 'documents'), newDocument);
-
-      return newDocument;
-    } catch (err) {
-      error.value = 'Error al subir el documento';
-      throw err;
-    } finally {
       isLoading.value = false;
+      return documentForStore;
+    } catch (err) {
+      console.error('Error uploading document:', err);
+      error.value = 'Error al subir el documento';
+      isLoading.value = false;
+      throw err;
     }
-  }
+  };
 
   // Función para obtener documentos desde Firestore
   async function fetchDocumentsFromFirestore() {
@@ -646,52 +663,94 @@ export function useDocuments() {
    * Elimina un documento de Cloudinary y Firestore usando el endpoint backend
    */
   const deleteDocument = async (documentId: string) => {
+    console.log(`Intentando eliminar documento con ID: ${documentId}`);
+    let documentUrl = '';
+    let documentData = null;
+
     try {
-      // Obtener el documento de Firestore
-      const docRef = firestoreDoc(db, 'documents', documentId);
-      const docSnap = await getDoc(docRef);
+      // Primero intentamos eliminar el documento de la colección global
+      try {
+        // Obtener el documento de Firestore
+        const docRef = firestoreDoc(db, 'documents', documentId);
+        const docSnap = await getDoc(docRef);
 
-      if (!docSnap.exists()) {
-        throw new Error('Documento no encontrado');
-      }
+        if (docSnap.exists()) {
+          documentData = docSnap.data();
+          documentUrl = documentData.url;
+          console.log(`Documento encontrado en Firestore: ${JSON.stringify(documentData)}`);
 
-      const documentData = docSnap.data();
-      const publicId = documentData.storagePath;
-      if (!publicId) {
-        throw new Error('No se encontró el public_id (storagePath) para eliminar en Cloudinary');
-      }
+          // Eliminar de Cloudinary si hay un storagePath
+          const publicId = documentData.storagePath;
+          if (publicId) {
+            try {
+              const response = await fetch('/api/delete-cloudinary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ public_id: publicId })
+              });
+              const result = await response.json();
+              console.log('[DEBUG] Respuesta de Cloudinary:', result);
+            } catch (cloudinaryError) {
+              console.error('Error al eliminar de Cloudinary:', cloudinaryError);
+            }
+          }
 
-      // Llamar al endpoint backend para eliminar de Cloudinary
-      const response = await fetch('/api/delete-cloudinary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ public_id: publicId })
-      });
-      const result = await response.json();
-      console.log('[DEBUG] Respuesta de Cloudinary:', result);
-
-      if (result.result !== 'ok' && result.result !== 'not found') {
-        throw new Error('Error al eliminar de Cloudinary: ' + (result.result || JSON.stringify(result)));
-      }
-
-      // Eliminar del array url del folder correspondiente
-      if (documentData.projectId && documentData.folderId) {
-        const folderRef = firestoreDoc(db, 'projects', documentData.projectId, 'folders', documentData.folderId);
-        const folderSnap = await getDoc(folderRef);
-        if (folderSnap.exists()) {
-          const folderData = folderSnap.data();
-          const urls = Array.isArray(folderData.url) ? folderData.url : [];
-          // Filtrar el documento a eliminar por url y nombreDocumento
-          const newUrls = urls.filter((item: any) => {
-            if (typeof item === 'string') return item !== documentData.url;
-            return item.url !== documentData.url;
-          });
-          await updateDoc(folderRef, { url: newUrls });
+          // Eliminar de Firestore
+          await deleteDoc(docRef);
+          console.log(`Documento eliminado de Firestore: ${documentId}`);
+        } else {
+          console.log(`Documento con ID ${documentId} no encontrado en Firestore, buscando en carpetas...`);
         }
+      } catch (firestoreError) {
+        console.error('Error al eliminar documento de Firestore:', firestoreError);
       }
 
-      // Eliminar de Firestore
-      await deleteDoc(docRef);
+      // Refuerzo: Eliminar el documento de todas las carpetas de todos los proyectos
+      try {
+        const projectsRef = collection(db, 'projects');
+        const projectsSnapshot = await getDocs(projectsRef);
+        let documentFound = false;
+        const deletePromises = [];
+
+        for (const projectDoc of projectsSnapshot.docs) {
+          const projectId = projectDoc.id;
+          const foldersRef = collection(db, 'projects', projectId, 'folders');
+          const foldersSnapshot = await getDocs(foldersRef);
+
+          for (const folderDoc of foldersSnapshot.docs) {
+            const folderId = folderDoc.id;
+            const folderData = folderDoc.data();
+
+            if (folderData.url && Array.isArray(folderData.url)) {
+              // Buscar el documento por ID o URL en la carpeta
+              const documentExists = folderData.url.some((item: any) => {
+                if (typeof item === 'string') {
+                  // Si es string, comparar por URL
+                  return (documentUrl && item === documentUrl);
+                }
+                // Si es objeto, comparar por ID o por URL
+                return (item && (item.id === documentId || (documentUrl && item.url === documentUrl)));
+              });
+
+              if (documentExists) {
+                documentFound = true;
+                console.log(`Documento encontrado en carpeta: ${projectId}/${folderId}`);
+                deletePromises.push(removeDocumentFromFolder(projectId, folderId, documentId, documentUrl));
+              }
+            }
+          }
+        }
+
+        if (deletePromises.length > 0) {
+          await Promise.all(deletePromises);
+          console.log(`Documento eliminado de ${deletePromises.length} carpetas`);
+        } else {
+          console.log('No se encontró el documento en ninguna carpeta.');
+        }
+      } catch (searchError) {
+        console.error('Error al buscar y eliminar documento en carpetas:', searchError);
+      }
+
       documentStore.removeDocument(documentId);
       return true;
     } catch (error) {
@@ -699,6 +758,109 @@ export function useDocuments() {
       throw error;
     }
   }
+
+  /**
+   * Elimina un documento de una carpeta específica
+   */
+  const removeDocumentFromFolder = async (projectId: string, folderId: string, documentId: string, documentUrl?: string) => {
+    try {
+      const folderRef = firestoreDoc(db, 'projects', projectId, 'folders', folderId);
+      const folderSnap = await getDoc(folderRef);
+
+      if (folderSnap.exists()) {
+        const folderData = folderSnap.data();
+
+        if (folderData.url && Array.isArray(folderData.url)) {
+          console.log(`URLs antes de filtrar: ${folderData.url.length}`);
+          console.log(`Buscando documento con ID: ${documentId} o URL: ${documentUrl}`);
+
+          // Filtrar el documento a eliminar por id o url
+          const newUrls = folderData.url.filter((item: any) => {
+            // Si es una cadena (URL simple)
+            if (typeof item === 'string') {
+              return documentUrl ? item !== documentUrl : true;
+            }
+
+            // Si es un objeto con ID
+            if (item && item.id === documentId) {
+              console.log(`Documento encontrado y será eliminado: ${JSON.stringify(item)}`);
+              return false;
+            }
+
+            // Si es un objeto con URL que coincide
+            if (item && documentUrl && item.url === documentUrl) {
+              console.log(`Documento encontrado por URL y será eliminado: ${JSON.stringify(item)}`);
+              return false;
+            }
+
+            return true;
+          });
+
+          console.log(`URLs después de filtrar: ${newUrls.length}`);
+
+          // Si la cantidad de URLs cambió, actualizar la carpeta
+          if (newUrls.length !== folderData.url.length) {
+            await updateDoc(folderRef, { url: newUrls });
+            console.log(`Documento eliminado exitosamente de la carpeta ${projectId}/${folderId}`);
+            return true;
+          } else {
+            console.log(`No se encontró el documento en la carpeta ${projectId}/${folderId}`);
+          }
+        }
+      } else {
+        console.log(`La carpeta ${projectId}/${folderId} no existe`);
+      }
+      return false;
+    } catch (error) {
+      console.error(`Error al eliminar documento de carpeta ${projectId}/${folderId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Elimina un documento por nombre o url, tanto de la colección global como de todos los folders
+   */
+  const deleteDocumentByNameOrUrl = async (nombre: string, url: string) => {
+    // Buscar en la colección global
+    const documentsRef = collection(db, 'documents');
+    const documentsSnapshot = await getDocs(documentsRef);
+    const foundDoc = documentsSnapshot.docs.find(docSnap =>
+      docSnap.data().nombre === nombre || docSnap.data().url === url
+    );
+    if (foundDoc) {
+      await deleteDocument(foundDoc.id); // Usa la función global que ya elimina de todos lados
+    } else {
+      // Si no está en la colección global, elimina solo de los folders
+      await removeDocumentFromAllFolders(nombre, url);
+    }
+  };
+
+  /**
+   * Elimina un documento de todos los folders por nombre o url
+   */
+  const removeDocumentFromAllFolders = async (nombre: string, url: string) => {
+    const projectsRef = collection(db, 'projects');
+    const projectsSnapshot = await getDocs(projectsRef);
+    for (const projectDoc of projectsSnapshot.docs) {
+      const projectId = projectDoc.id;
+      const foldersRef = collection(db, 'projects', projectId, 'folders');
+      const foldersSnapshot = await getDocs(foldersRef);
+      for (const folderDoc of foldersSnapshot.docs) {
+        const folderId = folderDoc.id;
+        const folderData = folderDoc.data();
+        if (folderData.url && Array.isArray(folderData.url)) {
+          const newUrls = folderData.url.filter((item: any) => {
+            if (typeof item === 'string') return item !== url && item !== nombre;
+            return item.nombre !== nombre && item.url !== url;
+          });
+          if (newUrls.length !== folderData.url.length) {
+            const folderRef = firestoreDoc(db, 'projects', projectId, 'folders', folderId);
+            await updateDoc(folderRef, { url: newUrls });
+          }
+        }
+      }
+    }
+  };
 
   return {
     documents,
@@ -715,6 +877,8 @@ export function useDocuments() {
     deleteDocument,
     findMatchingProject,
     findMatchingFolder,
-    addUrlToFolder
+    addUrlToFolder,
+    deleteDocumentByNameOrUrl,
+    removeDocumentFromAllFolders
   }
 } 

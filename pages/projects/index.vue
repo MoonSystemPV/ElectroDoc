@@ -310,6 +310,7 @@
                 @download="downloadDocument"
                 @validate="validateDocument"
                 @reject="rejectDocument"
+                @update="handleDocumentUpdate"
               />
             </div>
           </div>
@@ -471,7 +472,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc, deleteDoc, onSnapshot, Timestamp } from 'firebase/firestore'
+import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc, deleteDoc, onSnapshot, Timestamp, getDoc } from 'firebase/firestore'
 import { db } from '@/utils/firebase'
 import MainLayout from '~/components/layout/MainLayout.vue'
 import { useProjects } from '~/composables/useProjects'
@@ -480,6 +481,7 @@ import ProjectForm from '@/components/ProjectForm.vue'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import DocumentCard from '@/components/documents/DocumentCard.vue'
+import { useDocuments } from '~/composables/useDocuments'
 
 // Aplicar middleware de autenticación
 definePageMeta({
@@ -491,6 +493,7 @@ const { getProjects, createProject, error: projectError } = useProjects()
 const { addActivity } = useActivities()
 const { user } = useAuth()
 const { showToast } = useToast()
+const { deleteDocument } = useDocuments()
 const isSupervisor = computed(() => user.value?.role === 'supervisor')
 const isAdmin = computed(() => user.value?.role === 'admin')
 const canEditProjects = computed(() => isSupervisor.value || isAdmin.value)
@@ -754,57 +757,36 @@ async function openFolder(folderName) {
 
     // Obtenemos los URLs del campo url de la carpeta (puede ser array de strings, array de objetos, o string)
     const folderData = folderDoc.data()
-    if (Array.isArray(folderData.url)) {
-      folderUrls.value = folderData.url
-        .filter(item => {
-          if (typeof item === 'string') return item.trim() !== ''
-          if (typeof item === 'object' && item.url) return item.url.trim() !== ''
-          return false
-        })
-        .map(item => {
-          if (typeof item === 'string') {
-            return {
-              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-              nombre: item,
-              url: item,
-              estado: 'pendiente',
-              tipo: 'documento',
-              fechaSubida: new Date(),
-              comentarios: '',
-              projectId: selectedProject.value.id,
-              folderId: folderDoc.id
-            }
-          } else {
-            return {
-              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-              nombre: item.nombre || item.nombreDocumento || item.url,
-              url: item.url,
-              estado: item.estado || 'pendiente',
-              tipo: item.tipo || 'documento',
-              fechaSubida: item.fechaSubida
-                ? (item.fechaSubida.toDate ? item.fechaSubida.toDate() : new Date(item.fechaSubida))
-                : new Date(),
-              comentarios: item.comentarios || '',
-              projectId: item.projectId || selectedProject.value.id,
-              folderId: item.folderId || folderDoc.id
-            }
-          }
-        })
-    } else if (typeof folderData.url === 'string' && folderData.url.length > 0) {
-      folderUrls.value = [{
-        id: folderDoc.id,
-        nombre: folderData.url,
-        url: folderData.url,
+    const urlsArray = Array.isArray(folderData.url) ? folderData.url : [];
+    folderUrls.value = urlsArray.map(item => {
+      if (typeof item === 'object') {
+        let fecha = item.fechaSubida;
+        if (!fecha) {
+          fecha = new Date();
+        } else if (typeof fecha === 'string' || typeof fecha === 'number') {
+          fecha = new Date(fecha);
+        } else if (fecha.toDate) {
+          fecha = fecha.toDate();
+        }
+        return {
+          ...item,
+          fechaSubida: fecha,
+        };
+      }
+      // Si es string, crea un objeto mínimo
+      return {
+        id: item,
+        nombre: item,
+        url: item,
         estado: 'pendiente',
         tipo: 'documento',
         fechaSubida: new Date(),
         comentarios: '',
         projectId: selectedProject.value.id,
-        folderId: folderDoc.id
-      }]
-    } else {
-      folderUrls.value = []
-    }
+        folderId: folderDoc.id,
+        storagePath: null
+      };
+    });
   } catch (err) {
     console.error('Error al cargar URLs de la carpeta:', err)
     error.value = 'Error al cargar los URLs de la carpeta'
@@ -1019,6 +1001,92 @@ const statusOptions = [
     inactiveClass: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-900/20',
   },
 ]
+
+// Funciones para manejar documentos
+async function viewDocument(doc) {
+  window.open(doc.url, '_blank')
+}
+
+async function downloadDocument(doc) {
+  window.open(doc.url, '_blank')
+}
+
+async function validateDocument(doc) {
+  // Implementar lógica de validación si es necesario
+}
+
+async function rejectDocument(doc) {
+  // Implementar lógica de rechazo si es necesario
+}
+
+// Función para manejar la actualización de documentos (incluyendo eliminación)
+async function handleDocumentUpdate() {
+  console.log('Documento actualizado o eliminado, recargando carpeta...')
+  if (selectedProject.value && selectedFolder.value) {
+    await loadFolderContent(selectedFolder.value)
+    showToast('Carpeta actualizada', 'success')
+  }
+}
+
+// Cargar contenido de la carpeta seleccionada
+async function loadFolderContent(folderName) {
+  try {
+    if (!selectedProject.value) {
+      console.error('No hay proyecto seleccionado')
+      return
+    }
+    // Buscar la carpeta por nombre para obtener el folderId
+    const folderMeta = projectFolders.value.find(folder => folder.nombre === folderName)
+    if (!folderMeta) {
+      console.error('Carpeta no encontrada')
+      folderUrls.value = []
+      return
+    }
+    // Leer el folder directamente desde Firestore
+    const folderRef = doc(db, 'projects', selectedProject.value.id, 'folders', folderMeta.id)
+    const folderSnap = await getDoc(folderRef)
+    if (!folderSnap.exists()) {
+      console.error('No existe el folder en Firestore')
+      folderUrls.value = []
+      return
+    }
+    const folderData = folderSnap.data()
+    const urlsArray = Array.isArray(folderData.url) ? folderData.url : [];
+    folderUrls.value = urlsArray.map(item => {
+      if (typeof item === 'object') {
+        let fecha = item.fechaSubida;
+        if (!fecha) {
+          fecha = new Date();
+        } else if (typeof fecha === 'string' || typeof fecha === 'number') {
+          fecha = new Date(fecha);
+        } else if (fecha.toDate) {
+          fecha = fecha.toDate();
+        }
+        return {
+          ...item,
+          fechaSubida: fecha,
+        };
+      }
+      // Si es string, crea un objeto mínimo
+      return {
+        id: item,
+        nombre: item,
+        url: item,
+        estado: 'pendiente',
+        tipo: 'documento',
+        fechaSubida: new Date(),
+        comentarios: '',
+        projectId: selectedProject.value.id,
+        folderId: folderMeta.id,
+        storagePath: null
+      };
+    });
+  } catch (err) {
+    console.error('Error al cargar URLs de la carpeta:', err)
+    error.value = 'Error al cargar los URLs de la carpeta'
+    folderUrls.value = []
+  }
+}
 </script> 
 
 <style scoped>
