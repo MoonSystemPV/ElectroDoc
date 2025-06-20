@@ -79,20 +79,31 @@
                   <span class="material-icons mr-1">folder</span>
                   Ver Carpetas
                 </button>
-                <button 
-                  v-if="canEditProjects"
-                  @click="!isProjectExpired(project) && (showStatusModal = true, selectedProjectForStatus = project)"
-                  class="text-sm px-3 py-1 rounded-full transition-colors"
-                  :class="{
-                    'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': project.estado === 'activo',
-                    'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400': project.estado === 'completado',
-                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': project.estado === 'cancelado',
-                    'cursor-not-allowed opacity-60': isProjectExpired(project)
-                  }"
-                  :disabled="isProjectExpired(project)"
-                >
-                  {{ isProjectExpired(project) ? 'Caducado' : getStatusText(project.estado) }}
-                </button>
+                <div class="flex items-center gap-2">
+                  <button 
+                    @click="downloadProject(project)"
+                    class="text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 flex items-center"
+                    :disabled="isDownloadingProject === project.id"
+                  >
+                    <span v-if="isDownloadingProject === project.id" class="material-icons animate-spin mr-1">download</span>
+                    <span v-else class="material-icons mr-1">download</span>
+                    {{ isDownloadingProject === project.id ? 'Descargando...' : 'Descargar' }}
+                  </button>
+                  <button 
+                    v-if="canEditProjects"
+                    @click="!isProjectExpired(project) && (showStatusModal = true, selectedProjectForStatus = project)"
+                    class="text-sm px-3 py-1 rounded-full transition-colors"
+                    :class="{
+                      'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': project.estado === 'activo',
+                      'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400': project.estado === 'completado',
+                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': project.estado === 'cancelado',
+                      'cursor-not-allowed opacity-60': isProjectExpired(project)
+                    }"
+                    :disabled="isProjectExpired(project)"
+                  >
+                    {{ isProjectExpired(project) ? 'Caducado' : getStatusText(project.estado) }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -360,9 +371,20 @@
                 <span class="material-icons">folder</span>
                 {{ selectedProjectModal?.nombre }}
               </h2>
-              <button @click="closeProjectModal" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
-                <span class="material-icons">close</span>
-              </button>
+              <div class="flex items-center gap-3">
+                <button 
+                  @click="downloadProject(selectedProjectModal)"
+                  class="text-green-500 hover:text-green-600 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                  :disabled="isDownloadingProject === selectedProjectModal?.id"
+                >
+                  <span v-if="isDownloadingProject === selectedProjectModal?.id" class="material-icons animate-spin">download</span>
+                  <span v-else class="material-icons">download</span>
+                  {{ isDownloadingProject === selectedProjectModal?.id ? 'Descargando...' : 'Descargar Proyecto' }}
+                </button>
+                <button @click="closeProjectModal" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <!-- Datos clave del proyecto -->
@@ -524,6 +546,7 @@ const newUrl = ref({
   name: '',
   url: ''
 })
+const isDownloadingProject = ref(null)
 
 // Datos para nuevo proyecto
 const newProject = ref({
@@ -1085,6 +1108,43 @@ async function loadFolderContent(folderName) {
     console.error('Error al cargar URLs de la carpeta:', err)
     error.value = 'Error al cargar los URLs de la carpeta'
     folderUrls.value = []
+  }
+}
+
+// Función para descargar proyecto completo
+async function downloadProject(project) {
+  try {
+    isDownloadingProject.value = project.id
+    
+    const response = await fetch('/api/download-project', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ projectId: project.id })
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`)
+    }
+    
+    // Crear blob y descargar
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${project.nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    showToast(`Proyecto "${project.nombre}" descargado exitosamente`, 'success')
+  } catch (error) {
+    console.error('Error al descargar proyecto:', error)
+    showToast('Error al descargar el proyecto', 'error')
+  } finally {
+    isDownloadingProject.value = null
   }
 }
 </script> 

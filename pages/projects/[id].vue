@@ -38,6 +38,16 @@
         </div>
         
         <div class="flex gap-2">
+          <button 
+            @click="downloadProject"
+            class="btn btn-success flex items-center"
+            :disabled="isDownloading"
+          >
+            <span v-if="isDownloading" class="material-icons text-sm mr-1 animate-spin">download</span>
+            <span v-else class="material-icons text-sm mr-1">download</span>
+            {{ isDownloading ? 'Descargando...' : 'Descargar Proyecto' }}
+          </button>
+          
           <button class="btn btn-outline flex items-center">
             <span class="material-icons text-sm mr-1">edit</span>
             Editar
@@ -249,6 +259,7 @@ const isLoadingTechnicians = ref(false)
 const isLoadingAvailableTechnicians = ref(false)
 const isUploading = ref(false)
 const isAssigning = ref(false)
+const isDownloading = ref(false)
 
 // Error states
 const uploadError = ref('')
@@ -263,7 +274,7 @@ const selectedTechnicians = ref<string[]>([])
 
 // File upload data
 const uploadData = ref({
-  tipo: '',
+  tipo: '' as DocumentType,
   customName: '',
   file: null as File | null
 })
@@ -555,7 +566,7 @@ const uploadFile = async () => {
 
     // Reset form and close modal
     uploadData.value = {
-      tipo: '',
+      tipo: '' as DocumentType,
       customName: '',
       file: null
     }
@@ -623,6 +634,46 @@ const goToDocuments = () => {
   if (project.value && project.value.id) {
     console.log('Navegando a documentos del proyecto:', project.value.id)
     router.push(`/documents?projectId=${project.value.id}`)
+  }
+}
+
+// Download project
+const downloadProject = async () => {
+  if (!project.value) return
+  
+  isDownloading.value = true
+  
+  try {
+    const response = await fetch('/api/download-project', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ projectId: project.value.id })
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`)
+    }
+    
+    // Crear blob y descargar
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${project.value.nombre.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    // Mostrar mensaje de éxito
+    alert(`Proyecto "${project.value.nombre}" descargado exitosamente`)
+  } catch (error) {
+    console.error('Error al descargar proyecto:', error)
+    alert('Error al descargar el proyecto')
+  } finally {
+    isDownloading.value = false
   }
 }
 
