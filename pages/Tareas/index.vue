@@ -72,6 +72,9 @@
             >
               {{ tarea.estado.charAt(0).toUpperCase() + tarea.estado.slice(1) }}
             </span>
+            <span v-if="tarea.fechaVencimiento" class="text-xs text-zinc-500 dark:text-zinc-400">
+              Vence: {{ formatDate(tarea.fechaVencimiento) }}
+            </span>
           </div>
           <div class="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
             <span class="font-semibold">Proyecto:</span>
@@ -114,6 +117,10 @@
                   <option value="atrasada">Atrasada</option>
                 </select>
               </div>
+              <div>
+                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Fecha de Vencimiento</label>
+                <input v-model="form.fechaVencimiento" type="date" class="input-modern w-full" />
+              </div>
                 <div v-if="currentUser && currentUser.role === 'admin'">
                 <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Proyecto</label>
                   <select v-model="form.proyectoId" class="input-modern w-full">
@@ -143,44 +150,108 @@
   </MainLayout>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore'
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '~/utils/firebase'
 import MainLayout from '~/components/layout/MainLayout.vue'
 import { useAuth } from '~/composables/useAuth'
+import type { Tarea } from '~/types/tarea'
+import type { User } from '~/types/user'
+import type { Project } from '~/composables/useProjects'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
+
+interface TareaForm extends Omit<Partial<Tarea>, 'fechaVencimiento' | 'createdAt' | 'updatedAt'> {
+  fechaVencimiento?: string | null;
+}
 
 const { user: currentUser } = useAuth()
 
 const isLoading = ref(true)
-const tareas = ref([])
-const users = ref([])
-const projects = ref([])
+const tareas = ref<Tarea[]>([])
+const users = ref<User[]>([])
+const projects = ref<Project[]>([])
 const search = ref('')
 const filterEstado = ref('')
 
 const showModal = ref(false)
 const isEdit = ref(false)
-const form = ref({ nombre: '', descripcion: '', estado: 'pendiente', proyectoId: '', tecnicosAsignados: [] })
-let editId = null
+const form = ref<TareaForm>({
+  nombre: '',
+  descripcion: '',
+  estado: 'pendiente',
+  proyectoId: '',
+  tecnicosAsignados: [],
+  fechaVencimiento: null
+})
+let editId: string | null = null
 
 onMounted(() => {
   onSnapshot(collection(db, 'tareas'), (querySnapshot) => {
-    tareas.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    tareas.value = querySnapshot.docs.map(doc => {
+      const data = doc.data() as any;
+      return {
+        id: doc.id,
+        nombre: data.nombre || '',
+        descripcion: data.descripcion || '',
+        estado: data.estado || 'pendiente',
+        proyectoId: data.proyectoId || '',
+        tecnicosAsignados: data.tecnicosAsignados || [],
+        fechaVencimiento: data.fechaVencimiento instanceof Timestamp ? data.fechaVencimiento.toDate() : null,
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(),
+      } as Tarea;
+    })
     isLoading.value = false
   })
   onSnapshot(collection(db, 'users'), (querySnapshot) => {
-    users.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    users.value = querySnapshot.docs.map(doc => {
+      const data = doc.data() as any;
+      return {
+        id: doc.id,
+        uid: data.uid || '',
+        email: data.email || '',
+        nombre: data.nombre || '',
+        role: data.role || '',
+        fechaCreacion: data.fechaCreacion instanceof Timestamp ? data.fechaCreacion.toDate() : new Date(),
+      } as User;
+    });
   })
   onSnapshot(collection(db, 'projects'), (querySnapshot) => {
-    projects.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    projects.value = querySnapshot.docs.map(doc => {
+      const data = doc.data() as any;
+      return {
+        id: doc.id,
+        nombre: data.nombre || '',
+        cliente: data.cliente || '',
+        descripcion: data.descripcion || '',
+        fechaInicio: data.fechaInicio instanceof Timestamp ? data.fechaInicio.toDate() : new Date(),
+        fechaVencimiento: data.fechaVencimiento instanceof Timestamp ? data.fechaVencimiento.toDate() : null,
+        ubicacion: data.ubicacion || '',
+        estado: data.estado || '',
+        tecnicosAsignados: data.tecnicosAsignados || [],
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(),
+      } as Project;
+    });
   })
 })
 
 const filteredTareas = computed(() => {
   let filtered = tareas.value
-  if (currentUser && currentUser.role === 'tecnico') {
-    filtered = filtered.filter(t => Array.isArray(t.tecnicosAsignados) && t.tecnicosAsignados.includes(currentUser.id))
+  const now = new Date()
+
+  filtered.forEach(tarea => {
+    if (tarea.fechaVencimiento && tarea.fechaVencimiento < now && tarea.estado === 'pendiente') {
+      tarea.estado = 'atrasada'
+    }
+  })
+
+  if (currentUser.value && currentUser.value.role === 'tecnico') {
+    // Usamos uid para la comparación, ya que es el que se almacena en tecnicosAsignados
+    const currentUserId = currentUser.value.uid || '';
+    filtered = filtered.filter(t => Array.isArray(t.tecnicosAsignados) && t.tecnicosAsignados.includes(currentUserId))
   }
   if (filterEstado.value) {
     filtered = filtered.filter(t => t.estado === filterEstado.value)
@@ -195,25 +266,41 @@ const filteredTareas = computed(() => {
   return filtered
 })
 
-function getUserName(uid) {
+function getUserName(uid: string) {
   const user = users.value.find(u => u.uid === uid)
   return user ? user.nombre : uid
 }
-function getProjectName(id) {
+function getProjectName(id: string) {
   const project = projects.value.find(p => p.id === id)
   return project ? project.nombre : id
+}
+
+function formatDate(date: Date | null) {
+  if (!date) return 'Sin fecha definida'
+  return format(date, 'dd/MM/yyyy', { locale: es })
 }
 
 function openCreateModal() {
   isEdit.value = false
   showModal.value = true
-  form.value = { nombre: '', descripcion: '', estado: 'pendiente', proyectoId: projects.value[0]?.id || '', tecnicosAsignados: [] }
+  form.value = {
+    nombre: '',
+    descripcion: '',
+    estado: 'pendiente',
+    proyectoId: projects.value[0]?.id || '',
+    tecnicosAsignados: [],
+    fechaVencimiento: null
+  }
 }
 
-function openEditModal(tarea) {
+function openEditModal(tarea: Tarea) {
   isEdit.value = true
   showModal.value = true
-  form.value = { ...tarea }
+  form.value = {
+    ...tarea,
+    // Aseguramos que fechaVencimiento sea string para el input type="date"
+    fechaVencimiento: tarea.fechaVencimiento ? format(tarea.fechaVencimiento, 'yyyy-MM-dd') : null
+  }
   editId = tarea.id
 }
 
@@ -230,32 +317,43 @@ async function saveNewTarea() {
     descripcion: form.value.descripcion,
     estado: form.value.estado,
     proyectoId: form.value.proyectoId,
-    tecnicosAsignados: form.value.tecnicosAsignados
+    tecnicosAsignados: form.value.tecnicosAsignados,
+    fechaVencimiento: form.value.fechaVencimiento ? new Date(form.value.fechaVencimiento) : null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
   })
   closeModal()
 }
 
 async function saveEditTarea() {
-  if (!editId || !currentUser) return
+  if (!editId || !currentUser.value) return
   const refDoc = doc(db, 'tareas', editId)
   if (
-    currentUser.role === 'admin' ||
-    (currentUser.role === 'tecnico' && form.value.tecnicosAsignados.includes(currentUser.uid))
+    currentUser.value.role === 'admin' ||
+    (currentUser.value.role === 'tecnico' && form.value.tecnicosAsignados?.includes(currentUser.value.uid || ''))
   ) {
     await updateDoc(refDoc, {
       nombre: form.value.nombre,
       descripcion: form.value.descripcion,
       estado: form.value.estado,
       proyectoId: form.value.proyectoId,
-      tecnicosAsignados: form.value.tecnicosAsignados
+      tecnicosAsignados: form.value.tecnicosAsignados,
+      fechaVencimiento: form.value.fechaVencimiento ? new Date(form.value.fechaVencimiento) : null,
+      updatedAt: serverTimestamp()
     })
+  } else {
+    console.warn('Permiso denegado: El técnico no puede editar esta tarea.')
   }
   closeModal()
 }
 
-async function deleteTarea(tarea) {
-  if (confirm('¿Eliminar tarea?')) {
+async function deleteTarea(tarea: Tarea) {
+  if (!confirm('¿Estás seguro de que quieres eliminar esta tarea?')) return
+  try {
     await deleteDoc(doc(db, 'tareas', tarea.id))
+    console.log('Tarea eliminada con éxito')
+  } catch (error) {
+    console.error('Error al eliminar tarea:', error)
   }
 }
 </script>
