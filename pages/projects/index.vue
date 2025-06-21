@@ -962,11 +962,23 @@ async function handleProjectSubmit(projectData) {
   try {
     // Guardar el proyecto en Firestore
     const projectsRef = collection(db, 'projects')
-    await addDoc(projectsRef, {
+    const projectDocRef = await addDoc(projectsRef, {
       ...projectData,
       fechaCreacion: serverTimestamp(),
       estado: 'activo'
     })
+    // Crear solo las carpetas seleccionadas por el usuario
+    if (projectData.carpetas && Array.isArray(projectData.carpetas)) {
+      const foldersRef = collection(db, `projects/${projectDocRef.id}/folders`)
+      const createFolderPromises = projectData.carpetas.map(folderName =>
+        addDoc(foldersRef, {
+          nombre: folderName,
+          fechaCreacion: serverTimestamp(),
+          url: []
+        })
+      )
+      await Promise.all(createFolderPromises)
+    }
     // Cierra el modal y recarga la lista
     showNewProjectModal.value = false
     await loadProjects()
