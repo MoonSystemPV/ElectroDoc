@@ -266,9 +266,10 @@ const filteredTareas = computed(() => {
   return filtered
 })
 
-function getUserName(uid: string) {
-  const user = users.value.find(u => u.uid === uid)
-  return user ? user.nombre : uid
+function getUserName(uid: string | undefined) {
+  const id = uid || ''
+  const user = users.value.find(u => u.uid === id || u.id === id)
+  return user ? user.nombre : id
 }
 function getProjectName(id: string) {
   const project = projects.value.find(p => p.id === id)
