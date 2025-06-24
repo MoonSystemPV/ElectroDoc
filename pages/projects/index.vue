@@ -494,7 +494,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc, deleteDoc, onSnapshot, Timestamp, getDoc } from 'firebase/firestore'
+import { collection, getDocs, doc, updateDoc, serverTimestamp, addDoc, deleteDoc, onSnapshot, Timestamp, getDoc, query, where } from 'firebase/firestore'
 import { db } from '@/utils/firebase'
 import MainLayout from '~/components/layout/MainLayout.vue'
 import { useProjects } from '~/composables/useProjects'
@@ -504,6 +504,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import DocumentCard from '@/components/documents/DocumentCard.vue'
 import { useDocuments } from '~/composables/useDocuments'
+import { useTasks } from '~/composables/useTasks'
 
 // Aplicar middleware de autenticación
 definePageMeta({
@@ -583,6 +584,33 @@ const defaultFolders = [
   'Actas',
   'Otros'
 ]
+
+// Mapa de tiempos por carpeta
+const folderDeadlines = {
+  'certificados_materiales': { days: 14 }, // 2 semanas
+  'actas': { days: 3 },
+  'formularios_sec': { days: 3 },
+  'checklist': { days: 1 },
+  'planos': { months: 2 },
+  'evidencia_fotográfica': { projectDuration: true },
+  'informes_tecnicos': { months: 2 }
+}
+
+function addTimeToDate(date, { days = 0, months = 0 }) {
+  const result = new Date(date)
+  if (days) result.setDate(result.getDate() + days)
+  if (months) result.setMonth(result.getMonth() + months)
+  return result
+}
+
+async function getRandomTechnicianId() {
+  const usersRef = collection(db, 'users')
+  const q = query(usersRef, where('role', '==', 'tecnico'))
+  const snapshot = await getDocs(q)
+  const techs = snapshot.docs.map(doc => doc.id)
+  if (techs.length === 0) return null
+  return techs[Math.floor(Math.random() * techs.length)]
+}
 
 onMounted(() => {
   isLoading.value = true
@@ -891,6 +919,30 @@ async function createDefaultFolders(projectId) {
     )
     
     await Promise.all(createFolderPromises)
+
+    // Crear tareas para las carpetas por defecto recién creadas
+    console.log('Creando tareas para carpetas por defecto...')
+    const { createTask } = useTasks()
+    const fechaInicioProyecto = new Date()
+    for (const folderName of defaultFolders) {
+      const key = folderName.toLowerCase().replace(/\s|\-/g, '_')
+      const deadline = folderDeadlines[key]
+      let fechaVencimiento = null
+      if (deadline) {
+        fechaVencimiento = addTimeToDate(fechaInicioProyecto, deadline)
+      }
+      const tecnicoId = await getRandomTechnicianId()
+      console.log(`Intentando crear tarea por defecto para la carpeta: ${folderName} con técnico: ${tecnicoId} y vencimiento: ${fechaVencimiento}`)
+      await createTask({
+        nombre: `Subir documentos a carpeta ${folderName}`,
+        descripcion: `Subir los documentos requeridos para la carpeta ${folderName}`,
+        proyectoId: projectId,
+        estado: 'pendiente',
+        tecnicosAsignados: tecnicoId ? [tecnicoId] : [],
+        fechaVencimiento
+      })
+      console.log(`Tarea por defecto para ${folderName} intentada.`)
+    }
   } catch (err) {
     console.error('Error al crear carpetas por defecto:', err)
     throw new Error('Error al crear las carpetas por defecto')
@@ -969,6 +1021,7 @@ async function handleProjectSubmit(projectData) {
     })
     // Crear solo las carpetas seleccionadas por el usuario
     if (projectData.carpetas && Array.isArray(projectData.carpetas)) {
+      console.log('Creando carpetas seleccionadas por el usuario:', projectData.carpetas)
       const foldersRef = collection(db, `projects/${projectDocRef.id}/folders`)
       const createFolderPromises = projectData.carpetas.map(folderName =>
         addDoc(foldersRef, {
@@ -978,6 +1031,35 @@ async function handleProjectSubmit(projectData) {
         })
       )
       await Promise.all(createFolderPromises)
+
+      // Crear tareas para las carpetas recién creadas
+      console.log('Creando tareas para carpetas seleccionadas...')
+      const { createTask } = useTasks()
+      const fechaInicioProyecto = projectData.fechaInicio ? new Date(projectData.fechaInicio) : new Date()
+      const fechaFinProyecto = projectData.fechaFin ? new Date(projectData.fechaFin) : null
+      for (const folderName of projectData.carpetas) {
+        const key = folderName.toLowerCase().replace(/\s|\-/g, '_')
+        const deadline = folderDeadlines[key]
+        let fechaVencimiento = null
+        if (deadline) {
+          if (deadline.projectDuration && fechaFinProyecto) {
+            fechaVencimiento = fechaFinProyecto
+          } else {
+            fechaVencimiento = addTimeToDate(fechaInicioProyecto, deadline)
+          }
+        }
+        const tecnicoId = await getRandomTechnicianId()
+        console.log(`Intentando crear tarea para la carpeta: ${folderName} con técnico: ${tecnicoId} y vencimiento: ${fechaVencimiento}`)
+        await createTask({
+          nombre: `Subir documentos a carpeta ${folderName}`,
+          descripcion: `Subir los documentos requeridos para la carpeta ${folderName}`,
+          proyectoId: projectDocRef.id,
+          estado: 'pendiente',
+          tecnicosAsignados: tecnicoId ? [tecnicoId] : [],
+          fechaVencimiento
+        })
+        console.log(`Tarea para ${folderName} intentada.`)
+      }
     }
     // Cierra el modal y recarga la lista
     showNewProjectModal.value = false

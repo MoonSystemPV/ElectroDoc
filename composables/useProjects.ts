@@ -1,7 +1,8 @@
 import { ref } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useProjectStore } from '~/stores/projects'
-import { collection, addDoc, getDocs, query, where, orderBy, doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { useTasks } from '~/composables/useTasks'
+import { collection, addDoc, getDocs, query, where, orderBy, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, limit, FieldValue } from 'firebase/firestore'
 import { useNuxtApp } from '#app'
 
 export interface Project {
@@ -14,8 +15,8 @@ export interface Project {
   ubicacion?: string
   estado: 'activo' | 'completado' | 'cancelado'
   tecnicosAsignados: string[]
-  createdAt: Date
-  updatedAt: Date
+  createdAt: Date | FieldValue
+  updatedAt: Date | FieldValue
 }
 
 export const useProjects = () => {
@@ -113,7 +114,8 @@ export const useProjects = () => {
     try {
       const projectsRef = collection($firebase.firestore, 'projects')
 
-      const newProject = {
+      // Data to be stored in Firestore
+      const dataToStore = {
         nombre: projectData.nombre || 'Nuevo Proyecto',
         cliente: projectData.cliente || 'Cliente',
         descripcion: projectData.descripcion || '',
@@ -126,12 +128,12 @@ export const useProjects = () => {
         updatedAt: serverTimestamp()
       }
 
-      const docRef = await addDoc(projectsRef, newProject)
+      const docRef = await addDoc(projectsRef, dataToStore)
 
-      // Actualizar el store con el nuevo proyecto
-      const createdProject = {
+      // Create the Project object for the store, including the new id
+      const createdProject: Project = {
         id: docRef.id,
-        ...newProject
+        ...dataToStore,
       } as Project
 
       projectStore.addProject(createdProject)
