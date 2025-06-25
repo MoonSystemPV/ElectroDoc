@@ -31,7 +31,6 @@
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div v-for="project in filteredProjects" :key="project.id"
             class="bg-zinc-50 dark:bg-zinc-900 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
-            :class="{'expired-project': isProjectExpired(project)}"
           >
             <div class="p-6">
               <div class="flex items-start justify-between mb-4">
@@ -91,17 +90,16 @@
                   </button>
                   <button 
                     v-if="canEditProjects"
-                    @click="!isProjectExpired(project) && (showStatusModal = true, selectedProjectForStatus = project)"
+                    @click="showStatusModal = true; selectedProjectForStatus = project"
                     class="text-sm px-3 py-1 rounded-full transition-colors"
                     :class="{
                       'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': project.estado === 'activo',
                       'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400': project.estado === 'completado',
                       'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': project.estado === 'cancelado',
-                      'cursor-not-allowed opacity-60': isProjectExpired(project)
+                      'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400': project.estado === 'retrasado',
                     }"
-                    :disabled="isProjectExpired(project)"
                   >
-                    {{ isProjectExpired(project) ? 'Caducado' : getStatusText(project.estado) }}
+                    {{ getStatusText(project.estado) }}
                   </button>
                 </div>
               </div>
@@ -614,8 +612,23 @@ async function getRandomTechnicianId() {
 
 onMounted(() => {
   isLoading.value = true
-  onSnapshot(collection(db, 'projects'), (querySnapshot) => {
-    projects.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+  onSnapshot(collection(db, 'projects'), async (querySnapshot) => {
+    const proyectos = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    const today = new Date()
+    for (const project of proyectos) {
+      let fin = project.fechaFin || project.fechaVencimiento
+      let finDate = fin?.toDate ? fin.toDate() : (fin ? new Date(fin) : null)
+      if (finDate) {
+        finDate.setHours(0,0,0,0)
+        today.setHours(0,0,0,0)
+        if (finDate < today && project.estado !== 'retrasado' && project.estado !== 'completado' && project.estado !== 'cancelado') {
+          const projectRef = doc(db, 'projects', project.id)
+          await updateDoc(projectRef, { estado: 'retrasado' })
+          project.estado = 'retrasado'
+        }
+      }
+    }
+    projects.value = proyectos
     isLoading.value = false
   })
 })
@@ -664,6 +677,7 @@ function getStatusText(status) {
     case 'completado': return 'Completado'
     case 'cancelado': return 'Cancelado'
     case 'suspendido': return 'Suspendido'
+    case 'retrasado': return 'Retrasado'
     default: return status
   }
 }
@@ -1117,6 +1131,14 @@ const statusOptions = [
     activeClass: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-300',
     inactiveClass: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 hover:bg-red-50 dark:hover:bg-red-900/20',
   },
+  {
+    value: 'retrasado',
+    label: 'Retrasado',
+    icon: 'schedule',
+    iconClass: 'text-orange-500',
+    activeClass: 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/30 dark:text-orange-300',
+    inactiveClass: 'bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:border-zinc-700 hover:bg-orange-50 dark:hover:bg-orange-900/20',
+  },
 ]
 
 // Funciones para manejar documentos
@@ -1244,13 +1266,5 @@ async function downloadProject(project) {
 </script> 
 
 <style scoped>
-.expired-project {
-  border: 3px solid #ef4444 !important;
-  animation: blink-red 1s infinite;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3);
-}
-@keyframes blink-red {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3); }
-  50% { box-shadow: 0 0 10px 8px rgba(239, 68, 68, 0.7); }
-}
+/* Eliminado el estilo .expired-project y la animación blink-red */
 </style> 
