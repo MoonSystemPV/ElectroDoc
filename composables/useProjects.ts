@@ -3,7 +3,7 @@ import { useAuth } from '~/composables/useAuth'
 import { useProjectStore } from '~/stores/projects'
 import { useTasks } from '~/composables/useTasks'
 import { collection, addDoc, getDocs, query, where, orderBy, doc, getDoc, updateDoc, deleteDoc, serverTimestamp, limit, FieldValue } from 'firebase/firestore'
-import { useNuxtApp } from '#app'
+import { db } from '@/utils/firebase'
 
 export interface Project {
   id: string
@@ -22,7 +22,6 @@ export interface Project {
 export const useProjects = () => {
   const { user } = useAuth()
   const projectStore = useProjectStore()
-  const { $firebase } = useNuxtApp()
 
   const projects = ref<Project[]>([])
   const isLoading = ref(false)
@@ -40,7 +39,7 @@ export const useProjects = () => {
     error.value = null
 
     try {
-      const projectsRef = collection($firebase.firestore, 'projects')
+      const projectsRef = collection(db, 'projects')
       let q = query(projectsRef)
 
       if (options?.filterByStatus) {
@@ -82,7 +81,7 @@ export const useProjects = () => {
     error.value = null
 
     try {
-      const projectDoc = await getDoc(doc($firebase.firestore, 'projects', id))
+      const projectDoc = await getDoc(doc(db, 'projects', id))
 
       if (projectDoc.exists()) {
         const project = {
@@ -112,7 +111,7 @@ export const useProjects = () => {
     error.value = null
 
     try {
-      const projectsRef = collection($firebase.firestore, 'projects')
+      const projectsRef = collection(db, 'projects')
 
       // Data to be stored in Firestore
       const dataToStore = {
@@ -156,7 +155,7 @@ export const useProjects = () => {
     error.value = null
 
     try {
-      const projectRef = doc($firebase.firestore, 'projects', id)
+      const projectRef = doc(db, 'projects', id)
 
       const updateData = {
         ...projectData,
@@ -191,7 +190,7 @@ export const useProjects = () => {
     error.value = null
 
     try {
-      await deleteDoc(doc($firebase.firestore, 'projects', id))
+      await deleteDoc(doc(db, 'projects', id))
 
       // Actualizar el store
       projectStore.removeProject(id)
