@@ -44,14 +44,14 @@
                 </div>
                 <div class="flex items-center gap-2">
                   <button 
-                    v-if="canEditProjects"
+                    v-if="isAdmin"
                     @click="deleteProject(project)"
                     class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
                   >
                     <span class="material-icons">delete</span>
                   </button>
                   <button 
-                    v-if="canEditProjects"
+                    v-if="isAdmin"
                     @click="editProject(project)"
                     class="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
                   >
@@ -515,9 +515,11 @@ const { addActivity } = useActivities()
 const { user } = useAuth()
 const { showToast } = useToast()
 const { deleteDocument } = useDocuments()
+const { tasks, loadAllTasks } = useTasks()
 const isSupervisor = computed(() => user.value?.role === 'supervisor')
 const isAdmin = computed(() => user.value?.role === 'admin')
 const canEditProjects = computed(() => isSupervisor.value || isAdmin.value)
+const isTechnician = computed(() => user.value?.role === 'tecnico')
 
 // Estado
 const isLoading = ref(false)
@@ -663,10 +665,9 @@ async function loadProjects() {
 
 // Cargar proyectos al montar el componente
 onMounted(async () => {
-  console.log('Usuario actual:', user.value)
-  console.log('Es supervisor:', isSupervisor.value)
-  console.log('Es admin:', isAdmin.value)
-  console.log('Puede editar:', canEditProjects.value)
+  console.log('Entrando a onMounted de proyectos')
+  await loadAllTasks()
+  console.log('TAREAS CARGADAS:', tasks.value)
   await loadProjects()
 })
 
@@ -1084,16 +1085,35 @@ async function handleProjectSubmit(projectData) {
   }
 }
 
+// Tareas visibles para el técnico
+const filteredTareasTecnico = computed(() => {
+  if (!isTechnician.value || !user.value?.id || !Array.isArray(tasks.value)) return []
+  return tasks.value.filter(t => Array.isArray(t.tecnicosAsignados) && t.tecnicosAsignados.includes(user.value.id))
+})
+
+// IDs únicos de proyectos de esas tareas
+const technicianProjectIds = computed(() => {
+  return Array.isArray(filteredTareasTecnico.value)
+    ? [...new Set(filteredTareasTecnico.value.map(t => t.proyectoId))]
+    : []
+})
+
+// LOGS DE DEPURACIÓN
+console.log('tasks:', tasks.value)
+console.log('filteredTareasTecnico:', filteredTareasTecnico.value)
+console.log('technicianProjectIds:', technicianProjectIds.value)
+console.log('projects:', projects.value)
+
 const filteredProjects = computed(() => {
-  return (projects.value || []).filter(project => {
-    const nombre = project.nombre || ''
-    const cliente = project.cliente || ''
-    const matchesStatus = !filterStatus.value || project.estado === filterStatus.value
-    const matchesSearch =
-      nombre.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      cliente.toLowerCase().includes(searchQuery.value.toLowerCase())
-    return matchesStatus && matchesSearch
-  })
+  if (!Array.isArray(projects.value)) return []
+  if (isAdmin.value) return projects.value
+  if (isSupervisor.value && user.value?.id) {
+    return projects.value.filter(project => project.supervisorId === user.value.id)
+  }
+  if (isTechnician.value && user.value?.id) {
+    return projects.value.filter(project => Array.isArray(technicianProjectIds.value) && technicianProjectIds.value.includes(project.id))
+  }
+  return projects.value
 })
 
 function isProjectExpired(project) {

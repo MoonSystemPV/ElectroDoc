@@ -187,6 +187,12 @@ const form = ref<TareaForm>({
 })
 let editId: string | null = null
 
+const isSupervisor = computed(() => currentUser.value?.role === 'supervisor')
+const supervisorProjectIds = computed(() => {
+  if (!isSupervisor.value || !currentUser.value || !currentUser.value.id) return []
+  return projects.value.filter(p => p.supervisorId === currentUser.value.id).map(p => p.id)
+})
+
 onMounted(() => {
   onSnapshot(collection(db, 'tareas'), (querySnapshot) => {
     tareas.value = querySnapshot.docs.map(doc => {
@@ -231,9 +237,10 @@ onMounted(() => {
         ubicacion: data.ubicacion || '',
         estado: data.estado || '',
         tecnicosAsignados: data.tecnicosAsignados || [],
+        supervisorId: data.supervisorId || '',
         createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
         updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(),
-      } as Project;
+      } as Project & { supervisorId: string };
     });
   })
 })
@@ -248,7 +255,9 @@ const filteredTareas = computed(() => {
     }
   })
 
-  if (currentUser.value && currentUser.value.role === 'tecnico') {
+  if (isSupervisor.value) {
+    filtered = filtered.filter(t => supervisorProjectIds.value.includes(t.proyectoId || ''))
+  } else if (currentUser.value && currentUser.value.role === 'tecnico') {
     // Usamos uid para la comparación, ya que es el que se almacena en tecnicosAsignados
     const currentUserId = currentUser.value.uid || '';
     filtered = filtered.filter(t => Array.isArray(t.tecnicosAsignados) && t.tecnicosAsignados.includes(currentUserId))

@@ -6,98 +6,194 @@
         <p class="text-lg text-zinc-500 dark:text-zinc-300 animate-fade-in delay-100">Bienvenido a tu panel de control de ElectroDoc.</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-        <!-- Tarjeta de resumen de proyectos -->
-        <div class="bg-gradient-to-br from-white to-zinc-100 dark:from-zinc-800 dark:to-zinc-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-zinc-400 dark:text-zinc-300 mr-3 text-5xl group-hover:animate-pulse transition-transform">folder</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Proyectos</h2>
+        <template v-if="isTechnician">
+          <!-- Cuadro: Tareas atrasadas -->
+          <div class="bg-gradient-to-br from-white to-red-100 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-250 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:scale-110 transition">warning</span>
+              <h2 class="text-2xl font-bold text-red-600 dark:text-red-400">Tareas atrasadas</h2>
+            </div>
+            <p class="text-3xl font-extrabold text-red-700 dark:text-red-300 mb-2">{{ tareasAtrasadasTecnico }}</p>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="totalProyectos">{{ totalProyectos }}</p>
-          <p class="text-zinc-400 text-sm">Proyectos totales</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Proyectos')">Ver más</button>
-        </div>
-        <!-- Proyectos en ejecución -->
-        <div class="bg-gradient-to-br from-white to-blue-100 dark:from-zinc-800 dark:to-blue-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-50 cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-blue-500 dark:text-blue-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">play_circle</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Proyectos en ejecución</h2>
+          <!-- Cuadro: Tareas pendientes -->
+          <div class="bg-gradient-to-br from-white to-yellow-100 dark:from-zinc-800 dark:to-yellow-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-250 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-yellow-500 dark:text-yellow-400 mr-3 text-5xl group-hover:scale-110 transition">pending_actions</span>
+              <h2 class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">Tareas pendientes</h2>
+            </div>
+            <p class="text-3xl font-extrabold text-yellow-700 dark:text-yellow-300 mb-2">{{ tareasPendientesTecnico }}</p>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="proyectosEjecucion">{{ proyectosEjecucion }}</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Proyectos en ejecución')">Ver más</button>
-        </div>
-        <!-- Proyectos retrasados -->
-        <div class="bg-gradient-to-br from-white to-red-100 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-100 cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">schedule</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Proyectos retrasados</h2>
+          <!-- Cuadro: Tareas completadas -->
+          <div class="bg-gradient-to-br from-white to-green-100 dark:from-zinc-800 dark:to-green-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-250 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-green-500 dark:text-green-400 mr-3 text-5xl group-hover:scale-110 transition">check_circle</span>
+              <h2 class="text-2xl font-bold text-green-600 dark:text-green-400">Tareas completadas</h2>
+            </div>
+            <p class="text-3xl font-extrabold text-green-700 dark:text-green-300 mb-2">{{ tareasCompletadasTecnico }}</p>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="proyectosRetrasados">{{ proyectosRetrasados }}</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Proyectos retrasados')">Ver más</button>
-        </div>
-        <!-- Proyectos finalizados -->
-        <div class="bg-gradient-to-br from-white to-green-100 dark:from-zinc-800 dark:to-green-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-150 cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-green-500 dark:text-green-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">check_circle</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Proyectos finalizados</h2>
+        </template>
+        <template v-else-if="isSupervisor">
+          <!-- Documentos validados -->
+          <div class="bg-gradient-to-br from-white to-green-100 dark:from-zinc-800 dark:to-green-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-250 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-green-500 dark:text-green-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">verified</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Documentos validados</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="documentosValidadosSupervisor">{{ documentosValidadosSupervisor }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Documentos validados')">Ver más</button>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="proyectosFinalizados">{{ proyectosFinalizados }}</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Proyectos finalizados')">Ver más</button>
-        </div>
-        <!-- Documentos retrasados -->
-        <div class="bg-gradient-to-br from-white to-red-50 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-200 cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">warning</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Documentos retrasados</h2>
+          <!-- Documentos rechazados -->
+          <div class="bg-gradient-to-br from-white to-red-50 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-200 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">block</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Documentos rechazados</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="documentosRechazados">{{ documentosRechazados }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Documentos rechazados')">Ver más</button>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="documentosRetrasados">{{ documentosRetrasados }}</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Documentos retrasados')">Ver más</button>
-        </div>
-        <!-- Documentos validados -->
-        <div class="bg-gradient-to-br from-white to-green-100 dark:from-zinc-800 dark:to-green-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-250 cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-green-500 dark:text-green-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">verified</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Documentos validados</h2>
+          <!-- Técnicos de sus proyectos -->
+          <div class="bg-gradient-to-br from-white to-cyan-50 dark:from-zinc-800 dark:to-cyan-900/20 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-300 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-cyan-400 dark:text-cyan-300 mr-3 text-5xl group-hover:animate-pulse transition-transform">people</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">{{ usuariosBoxTitle }}</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="filteredUsuarios.length">{{ filteredUsuarios.length }}</p>
+            <p class="text-zinc-400 text-sm">Técnicos activos en tus proyectos</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Usuarios')">Ver más</button>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="documentosValidados">{{ documentosValidados }}</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Documentos validados')">Ver más</button>
-        </div>
-        <!-- Tarjeta de resumen de usuarios -->
-        <div class="bg-gradient-to-br from-white to-cyan-50 dark:from-zinc-800 dark:to-cyan-900/20 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-300 cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-cyan-400 dark:text-cyan-300 mr-3 text-5xl group-hover:animate-pulse transition-transform">people</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Usuarios</h2>
+          <!-- Tareas atrasadas -->
+          <div class="bg-gradient-to-br from-white to-red-100 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-350 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">error</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Tareas atrasadas</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="tareasAtrasadasSupervisor">{{ tareasAtrasadasSupervisor }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Tareas atrasadas')">Ver más</button>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="totalUsuarios">{{ totalUsuarios }}</p>
-          <p class="text-zinc-400 text-sm">Usuarios activos</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Usuarios')">Ver más</button>
-        </div>
-        <!-- Tareas atrasadas -->
-        <div class="bg-gradient-to-br from-white to-red-100 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-350 cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">error</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Tareas atrasadas</h2>
+          <!-- Tareas pendientes -->
+          <div class="bg-gradient-to-br from-white to-yellow-100 dark:from-zinc-800 dark:to-yellow-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-400 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-yellow-500 dark:text-yellow-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">hourglass_empty</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Tareas pendientes</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="tareasPendientesSupervisor">{{ tareasPendientesSupervisor }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Tareas pendientes')">Ver más</button>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="tareasAtrasadas">{{ tareasAtrasadas }}</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Tareas atrasadas')">Ver más</button>
-        </div>
-        <!-- Tareas pendientes -->
-        <div class="bg-gradient-to-br from-white to-yellow-100 dark:from-zinc-800 dark:to-yellow-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-400 cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-yellow-500 dark:text-yellow-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">hourglass_empty</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Tareas pendientes</h2>
+          <!-- Tareas completadas -->
+          <div class="bg-gradient-to-br from-white to-green-100 dark:from-zinc-800 dark:to-green-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-450 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-green-500 dark:text-green-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">task_alt</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Tareas completadas</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="tareasCompletadasSupervisor">{{ tareasCompletadasSupervisor }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Tareas completadas')">Ver más</button>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="tareasPendientes">{{ tareasPendientes }}</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Tareas pendientes')">Ver más</button>
-        </div>
-        <!-- Tareas completadas -->
-        <div class="bg-gradient-to-br from-white to-green-100 dark:from-zinc-800 dark:to-green-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-450 cursor-default select-none">
-          <div class="flex items-center mb-4">
-            <span class="material-icons text-green-500 dark:text-green-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">task_alt</span>
-            <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Tareas completadas</h2>
+        </template>
+        <template v-else>
+          <!-- Cuadros de Proyectos: solo para no supervisores -->
+          <template v-if="!isSupervisor">
+            <!-- Tarjeta de resumen de proyectos -->
+            <div class="bg-gradient-to-br from-white to-zinc-100 dark:from-zinc-800 dark:to-zinc-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in cursor-default select-none">
+              <div class="flex items-center mb-4">
+                <span class="material-icons text-zinc-400 dark:text-zinc-300 mr-3 text-5xl group-hover:animate-pulse transition-transform">folder</span>
+                <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Proyectos</h2>
+              </div>
+              <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="totalProyectos">{{ totalProyectos }}</p>
+              <p class="text-zinc-400 text-sm">Proyectos totales</p>
+              <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Proyectos')">Ver más</button>
+            </div>
+            <!-- Proyectos en ejecución -->
+            <div class="bg-gradient-to-br from-white to-blue-100 dark:from-zinc-800 dark:to-blue-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-50 cursor-default select-none">
+              <div class="flex items-center mb-4">
+                <span class="material-icons text-blue-500 dark:text-blue-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">play_circle</span>
+                <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Proyectos en ejecución</h2>
+              </div>
+              <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="proyectosEjecucion">{{ proyectosEjecucion }}</p>
+              <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Proyectos en ejecución')">Ver más</button>
+            </div>
+            <!-- Proyectos retrasados -->
+            <div class="bg-gradient-to-br from-white to-red-100 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-100 cursor-default select-none">
+              <div class="flex items-center mb-4">
+                <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">schedule</span>
+                <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Proyectos retrasados</h2>
+              </div>
+              <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="proyectosRetrasados">{{ proyectosRetrasados }}</p>
+              <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Proyectos retrasados')">Ver más</button>
+            </div>
+            <!-- Proyectos finalizados -->
+            <div class="bg-gradient-to-br from-white to-green-100 dark:from-zinc-800 dark:to-green-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-150 cursor-default select-none">
+              <div class="flex items-center mb-4">
+                <span class="material-icons text-green-500 dark:text-green-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">check_circle</span>
+                <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Proyectos finalizados</h2>
+              </div>
+              <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="proyectosFinalizados">{{ proyectosFinalizados }}</p>
+              <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Proyectos finalizados')">Ver más</button>
+            </div>
+          </template>
+          <!-- Documentos rechazados para supervisor, retrasados para otros -->
+          <div v-if="isSupervisor" class="bg-gradient-to-br from-white to-red-50 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-200 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">block</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Documentos rechazados</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="documentosRechazados">{{ documentosRechazados }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Documentos rechazados')">Ver más</button>
           </div>
-          <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="tareasCompletadas">{{ tareasCompletadas }}</p>
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Tareas completadas')">Ver más</button>
-        </div>
+          <div v-else class="bg-gradient-to-br from-white to-red-50 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-200 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">warning</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Documentos retrasados</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="documentosRetrasados">{{ documentosRetrasados }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Documentos retrasados')">Ver más</button>
+          </div>
+          <!-- Documentos validados -->
+          <div class="bg-gradient-to-br from-white to-green-100 dark:from-zinc-800 dark:to-green-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-250 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-green-500 dark:text-green-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">verified</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Documentos validados</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="documentosValidadosSupervisor">{{ documentosValidadosSupervisor }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Documentos validados')">Ver más</button>
+          </div>
+          <!-- Usuarios -->
+          <div class="bg-gradient-to-br from-white to-cyan-50 dark:from-zinc-800 dark:to-cyan-900/20 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-300 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-cyan-400 dark:text-cyan-300 mr-3 text-5xl group-hover:animate-pulse transition-transform">people</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">{{ usuariosBoxTitle }}</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="filteredUsuarios.length">{{ filteredUsuarios.length }}</p>
+            <p class="text-zinc-400 text-sm">{{ isSupervisor ? 'Técnicos activos en tus proyectos' : 'Usuarios activos' }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Usuarios')">Ver más</button>
+          </div>
+          <!-- Tareas atrasadas -->
+          <div class="bg-gradient-to-br from-white to-red-100 dark:from-zinc-800 dark:to-red-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-350 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-red-500 dark:text-red-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">error</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Tareas atrasadas</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="tareasAtrasadasSupervisor">{{ tareasAtrasadasSupervisor }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Tareas atrasadas')">Ver más</button>
+          </div>
+          <!-- Tareas pendientes -->
+          <div class="bg-gradient-to-br from-white to-yellow-100 dark:from-zinc-800 dark:to-yellow-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-400 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-yellow-500 dark:text-yellow-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">hourglass_empty</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Tareas pendientes</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="tareasPendientesSupervisor">{{ tareasPendientesSupervisor }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Tareas pendientes')">Ver más</button>
+          </div>
+          <!-- Tareas completadas -->
+          <div class="bg-gradient-to-br from-white to-green-100 dark:from-zinc-800 dark:to-green-900/10 p-7 rounded-2xl shadow-xl flex flex-col items-start transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl group animate-fade-in delay-450 cursor-default select-none">
+            <div class="flex items-center mb-4">
+              <span class="material-icons text-green-500 dark:text-green-400 mr-3 text-5xl group-hover:animate-pulse transition-transform">task_alt</span>
+              <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Tareas completadas</h2>
+            </div>
+            <p class="text-5xl font-extrabold mb-2 text-zinc-900 dark:text-white animate-count select-none" :data-count="tareasCompletadasSupervisor">{{ tareasCompletadasSupervisor }}</p>
+            <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition" @click="openModal('Tareas completadas')">Ver más</button>
+          </div>
+        </template>
       </div>
       <!-- Modal genérico -->
       <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -228,6 +324,70 @@ const tareas = ref([])
 const showModal = ref(false)
 const modalTitle = ref('')
 
+const isSupervisor = computed(() => user.value?.role === 'supervisor')
+const isTechnician = computed(() => user.value?.role === 'tecnico')
+const supervisorProjectIds = computed(() => {
+  if (!isSupervisor.value || !user.value?.id) return []
+  return proyectos.value.filter(p => p.supervisorId === user.value.id).map(p => p.id)
+})
+const documentosRechazados = computed(() => {
+  if (!isSupervisor.value) return documentos.value.filter(d => d.estado === 'rechazado').length
+  return documentos.value.filter(d => d.estado === 'rechazado' && supervisorProjectIds.value.includes(d.projectId || d.proyectoId)).length
+})
+const documentosValidadosSupervisor = computed(() => {
+  if (!isSupervisor.value) return documentos.value.filter(d => d.estado === 'validado').length
+  return documentos.value.filter(d => d.estado === 'validado' && supervisorProjectIds.value.includes(d.projectId || d.proyectoId)).length
+})
+const tareasAtrasadasSupervisor = computed(() => {
+  if (!isSupervisor.value) return tareas.value.filter(t => t.estado === 'atrasada').length
+  return tareas.value.filter(t => t.estado === 'atrasada' && supervisorProjectIds.value.includes(t.proyectoId || t.projectId)).length
+})
+const tareasPendientesSupervisor = computed(() => {
+  if (!isSupervisor.value) return tareas.value.filter(t => t.estado === 'pendiente').length
+  return tareas.value.filter(t => t.estado === 'pendiente' && supervisorProjectIds.value.includes(t.proyectoId || t.projectId)).length
+})
+const tareasCompletadasSupervisor = computed(() => {
+  if (!isSupervisor.value) return tareas.value.filter(t => t.estado === 'completada').length
+  return tareas.value.filter(t => t.estado === 'completada' && supervisorProjectIds.value.includes(t.proyectoId || t.projectId)).length
+})
+const usuariosBoxTitle = computed(() => isSupervisor.value ? 'Técnicos de mis proyectos' : 'Usuarios')
+const filteredUsuarios = computed(() => {
+  if (isSupervisor.value) {
+    const tecnicosIds = new Set()
+    tareas.value.forEach(t => {
+      if (supervisorProjectIds.value.includes(t.proyectoId || t.projectId) && Array.isArray(t.tecnicosAsignados)) {
+        t.tecnicosAsignados.forEach(id => tecnicosIds.add(id))
+      }
+    })
+    return usuarios.value.filter(u => u.role === 'tecnico' && tecnicosIds.has(u.id || u.uid))
+  }
+  if (modalTitle.value === 'Usuarios') return usuarios.value
+  return []
+})
+const filteredDocumentos = computed(() => {
+  if (isSupervisor.value) {
+    if (modalTitle.value === 'Documentos rechazados') {
+      return documentos.value.filter(d => d.estado === 'rechazado' && supervisorProjectIds.value.includes(d.projectId || d.proyectoId))
+    }
+    if (modalTitle.value === 'Documentos validados') {
+      return documentos.value.filter(d => d.estado === 'validado' && supervisorProjectIds.value.includes(d.projectId || d.proyectoId))
+    }
+  }
+  if (modalTitle.value === 'Documentos retrasados') return documentos.value.filter(d => d.estado === 'atrasada' || d.estado === 'retrasado')
+  if (modalTitle.value === 'Documentos validados') return documentos.value.filter(d => d.estado === 'validado')
+  if (modalTitle.value === 'Documentos rechazados') return documentos.value.filter(d => d.estado === 'rechazado')
+  return []
+})
+const filteredTareas = computed(() => {
+  if (isSupervisor.value) {
+    return tareas.value.filter(t => supervisorProjectIds.value.includes(t.proyectoId || t.projectId))
+  }
+  if (modalTitle.value === 'Tareas atrasadas') return tareas.value.filter(t => t.estado === 'atrasada')
+  if (modalTitle.value === 'Tareas pendientes') return tareas.value.filter(t => t.estado === 'pendiente')
+  if (modalTitle.value === 'Tareas completadas') return tareas.value.filter(t => t.estado === 'completada')
+  return []
+})
+
 const filteredProyectos = computed(() => {
   if (modalTitle.value === 'Proyectos') return proyectos.value
   if (modalTitle.value === 'Proyectos en ejecución') return proyectos.value.filter(p => p.estado === 'activo')
@@ -236,23 +396,15 @@ const filteredProyectos = computed(() => {
   return []
 })
 
-const filteredDocumentos = computed(() => {
-  if (modalTitle.value === 'Documentos retrasados') return documentos.value.filter(d => d.estado === 'atrasada' || d.estado === 'retrasado')
-  if (modalTitle.value === 'Documentos validados') return documentos.value.filter(d => d.estado === 'validado')
-  return []
+// Tareas asignadas al técnico
+const tareasTecnico = computed(() => {
+  if (!isTechnician.value || !user.value?.id || !Array.isArray(tareas.value)) return []
+  return tareas.value.filter(t => Array.isArray(t.tecnicosAsignados) && t.tecnicosAsignados.includes(user.value.id))
 })
 
-const filteredUsuarios = computed(() => {
-  if (modalTitle.value === 'Usuarios') return usuarios.value
-  return []
-})
-
-const filteredTareas = computed(() => {
-  if (modalTitle.value === 'Tareas atrasadas') return tareas.value.filter(t => t.estado === 'atrasada')
-  if (modalTitle.value === 'Tareas pendientes') return tareas.value.filter(t => t.estado === 'pendiente')
-  if (modalTitle.value === 'Tareas completadas') return tareas.value.filter(t => t.estado === 'completada')
-  return []
-})
+const tareasAtrasadasTecnico = computed(() => tareasTecnico.value.filter(t => t.estado === 'atrasada').length)
+const tareasPendientesTecnico = computed(() => tareasTecnico.value.filter(t => t.estado === 'pendiente').length)
+const tareasCompletadasTecnico = computed(() => tareasTecnico.value.filter(t => t.estado === 'completada').length)
 
 onMounted(async () => {
   // Cargar proyectos

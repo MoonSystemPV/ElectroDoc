@@ -207,7 +207,16 @@ const documents = computed(() => documentStore.documents || [])
 
 const filteredDocuments = computed(() => {
   let filtered = documents.value
-  
+
+  // Si el usuario es supervisor, solo mostrar documentos de sus proyectos
+  if (isSupervisor.value && user.value?.id) {
+    // Obtener los IDs de los proyectos donde el supervisor es el encargado
+    const supervisorProjectIds = projects.value
+      .filter(p => p.supervisorId === user.value.id)
+      .map(p => p.id)
+    filtered = filtered.filter(doc => supervisorProjectIds.includes(doc.projectId))
+  }
+
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(doc => 
