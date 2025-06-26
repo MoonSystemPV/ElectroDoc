@@ -45,7 +45,7 @@
               </NuxtLink>
 
               <NuxtLink 
-                v-if="user && (user.role === 'admin' || user.role === 'tecnico')"
+                v-if="user && (user.role === 'admin' || user.role === 'tecnico' || user.role === 'supervisor')"
                 to="/tareas" 
                 class="group flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:scale-105"
                 active-class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
@@ -56,6 +56,7 @@
               </NuxtLink>
 
               <NuxtLink 
+                v-if="user && (user.role === 'admin' || user.role === 'supervisor' || user.role === 'tecnico')"
                 to="/projects" 
                 class="group flex items-center px-4 py-3 text-base font-medium rounded-xl text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 hover:scale-105"
                 active-class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
@@ -201,9 +202,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useRouter } from 'vue-router'
+import { useProjects } from '~/composables/useProjects'
 
 const { user, logout } = useAuth()
 const router = useRouter()
+const { projects } = useProjects()
 
 // Mobile menu state
 const isMobileMenuOpen = ref(false)
@@ -270,6 +273,13 @@ const getUserInitials = (name) => {
 // Admin check
 const isAdmin = computed(() => {
   return user.value?.role === 'admin' || user.value?.role === 'administrativo'
+})
+
+// Proyectos asignados al técnico
+const isTechnician = computed(() => user.value?.role === 'tecnico')
+const technicianProjects = computed(() => {
+  if (!isTechnician.value || !user.value?.id) return []
+  return projects.value.filter(p => Array.isArray(p.tecnicosAsignados) && p.tecnicosAsignados.includes(user.value.id))
 })
 </script>
 

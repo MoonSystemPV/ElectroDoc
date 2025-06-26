@@ -3,9 +3,11 @@ import { collection, addDoc, getDocs, query, where, doc, updateDoc, deleteDoc, s
 import { db } from '@/utils/firebase'
 import { useTaskStore } from '~/stores/tasks'
 import type { Tarea } from '~/types/tarea'
+import { storeToRefs } from 'pinia'
 
 export const useTasks = () => {
     const taskStore = useTaskStore()
+    const { tasks } = storeToRefs(taskStore)
 
     const isLoading = ref(false)
     const error = ref<string | null>(null)
@@ -102,6 +104,27 @@ export const useTasks = () => {
         }
     }
 
+    const loadAllTasks = async () => {
+        isLoading.value = true
+        error.value = null
+        try {
+            const tasksRef = collection(db, 'tareas')
+            const querySnapshot = await getDocs(tasksRef)
+            const tasksList = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Tarea[]
+            taskStore.setTasks(tasksList)
+            return tasksList
+        } catch (err) {
+            console.error('Error cargando todas las tareas:', err)
+            error.value = 'Error al cargar las tareas'
+            return []
+        } finally {
+            isLoading.value = false
+        }
+    }
+
     return {
         createTask,
         getTasksByProjectId,
@@ -109,6 +132,7 @@ export const useTasks = () => {
         deleteTask,
         isLoading,
         error,
-        tasks: taskStore.tasks,
+        tasks,
+        loadAllTasks,
     }
 } 
