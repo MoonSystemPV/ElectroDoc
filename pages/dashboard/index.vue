@@ -263,7 +263,9 @@
                 <div>
                   <div class="flex items-center gap-2 mb-1">
                     <span class="material-icons text-yellow-500 dark:text-yellow-300">task_alt</span>
-                    <span class="font-bold text-lg text-zinc-800 dark:text-zinc-100">{{ tarea.nombre }}</span>
+                    <span class="font-bold text-lg text-zinc-800 dark:text-zinc-100 line-clamp-3" :title="tarea.nombre">
+                      {{ tarea.nombre }}
+                    </span>
                   </div>
                   <div class="flex flex-wrap gap-4 text-sm text-zinc-600 dark:text-zinc-300">
                     <span><b>Estado:</b> <span class="capitalize">{{ tarea.estado }}</span></span>

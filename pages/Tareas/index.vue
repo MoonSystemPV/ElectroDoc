@@ -43,9 +43,11 @@
         <div v-for="tarea in filteredTareas" :key="tarea.id" class="tarea-card group relative">
           <div class="flex items-center mb-2">
             <span class="material-icons text-blue-400 mr-3 text-3xl animate-pop">task</span>
-            <h2 class="text-lg font-bold text-zinc-900 dark:text-white flex-1 truncate group-hover:text-blue-600 transition-colors">{{ tarea.nombre }}</h2>
+            <h2 class="block w-full text-lg font-bold text-zinc-900 dark:text-white flex-1 line-clamp-3 group-hover:text-blue-600 transition-colors" :title="tarea.nombre">
+              {{ tarea.nombre }}
+            </h2>
             <button
-              v-if="currentUser && (currentUser.role === 'admin' || (currentUser.role === 'tecnico' && tarea.tecnicosAsignados && tarea.tecnicosAsignados.includes(currentUser.uid)))"
+              v-if="currentUser && (currentUser.role === 'admin' || currentUser.role === 'supervisor' || (currentUser.role === 'tecnico' && tarea.tecnicosAsignados && tarea.tecnicosAsignados.includes(currentUser.uid)))"
               class="ml-2 btn-icon"
               @click="openEditModal(tarea)"
             >
@@ -340,6 +342,7 @@ async function saveEditTarea() {
   const refDoc = doc(db, 'tareas', editId)
   if (
     currentUser.value.role === 'admin' ||
+    currentUser.value.role === 'supervisor' ||
     (currentUser.value.role === 'tecnico' && form.value.tecnicosAsignados?.includes(currentUser.value.uid || ''))
   ) {
     await updateDoc(refDoc, {
@@ -352,7 +355,7 @@ async function saveEditTarea() {
       updatedAt: serverTimestamp()
     })
   } else {
-    console.warn('Permiso denegado: El técnico no puede editar esta tarea.')
+    console.warn('Permiso denegado: El usuario no puede editar esta tarea.')
   }
   closeModal()
 }
